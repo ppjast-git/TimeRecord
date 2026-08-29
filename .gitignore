@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual envs
+venv/
+.venv/
+env/
+ENV/
+
+# TimeRecord — baza danych i dane runtime (lokalne, nie w repo)
+time.db
+time.db-journal
+time.db-wal
+time.db-shm
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Logi
+*.log
+
+# IDE / edytory
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Dystrybucja / build
+build/
+dist/
+*.egg-info/
