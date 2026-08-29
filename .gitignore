@@ -35,6 +35,9 @@ startup_debug.*
 *.swp
 *.swo
 
+# Notatki deweloperskie (lokalna ściaga, nie w repo)
+DEV_NOTES.md
+
 # OS
 Thumbs.db
 desktop.ini
