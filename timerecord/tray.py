@@ -177,7 +177,7 @@ def _run_inner() -> int:
             icon.notify(msg, "TimeRecord — aktualizacja")
 
     def on_update_download(icon, item):
-        """Otwórz URL pobierania/release w przeglądarce."""
+        """Otwórz URL pobierania/release w przeglądarce (ręczna aktualizacja)."""
         if _update_info and _update_info.download_url:
             webbrowser.open(_update_info.download_url)
         elif _update_info and _update_info.html_url:
@@ -187,6 +187,41 @@ def _run_inner() -> int:
             from .config import SETTINGS
             if SETTINGS.github_repo:
                 webbrowser.open(f"https://github.com/{SETTINGS.github_repo}/releases/latest")
+
+    def on_auto_update(icon, item):
+        """Pobierz instalator i uruchom cichy upgrade w tle.
+
+        Po uruchomieniu instalatora ten proces zostanie zabity (taskkill
+        w InitializeSetup instalatora), nowa wersja wystartuje automatycznie.
+        """
+        if not _update_info or not _update_info.download_url:
+            icon.notify("Brak dostępnej aktualizacji", "TimeRecord")
+            return
+        icon.notify(f"Pobieram v{_update_info.latest_version}...", "TimeRecord — aktualizacja")
+
+        def _do_update():
+            try:
+                from .updater import download_and_install
+                def progress(downloaded, total):
+                    if total > 0:
+                        pct = downloaded * 100 // total
+                        if pct % 25 == 0:
+                            icon.notify(f"Pobieranie: {pct}%", "TimeRecord — aktualizacja")
+                icon.notify("Pobieranie zakończone. Instaluję...", "TimeRecord — aktualizacja")
+                download_and_install(_update_info, progress_cb=progress)
+                # Tu ten proces zostanie zabity przez instalator.
+                # Jeśli somehow dotarliśmy tutaj — zamknij się elegancko.
+                log.info("instalator uruchomiony — zamykam aplikację")
+                icon.stop()
+                server.should_exit = True
+                collector.stop()
+                storage.close()
+            except Exception as e:
+                log.exception("auto-update nie powiódł się: %s", e)
+                icon.notify(f"Aktualizacja nie powiodła się: {e}\nUżyj ręcznego pobierania.",
+                            "TimeRecord — aktualizacja")
+
+        threading.Thread(target=_do_update, name="TimeRecordUpdater", daemon=True).start()
 
     def _auto_check_update():
         """Automatyczne sprawdzenie przy starcie (z cache 24h)."""
@@ -239,8 +274,15 @@ def _run_inner() -> int:
             pystray.MenuItem("Sprawdź aktualizacje", on_check_update),
         ]
         if _update_info:
-            label = f"Pobierz v{_update_info.latest_version}"
-            items.append(pystray.MenuItem(label, on_update_download))
+            # Dwie opcje: auto-update (cichy) + ręczne pobieranie (przeglądarka)
+            items.append(pystray.MenuItem(
+                f"Aktualizuj automatycznie → v{_update_info.latest_version}",
+                on_auto_update,
+            ))
+            items.append(pystray.MenuItem(
+                f"Pobierz ręcznie (przeglądarka)",
+                on_update_download,
+            ))
         items.append(pystray.Menu.SEPARATOR)
         items.append(pystray.MenuItem(f"Wersja {__version__}", None, enabled=False))
         items.append(pystray.MenuItem("Wyjdź", on_quit))

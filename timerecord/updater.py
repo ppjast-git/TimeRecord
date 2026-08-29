@@ -10,6 +10,9 @@ from __future__ import annotations
 
 import json
 import logging
+import os
+import subprocess
+import tempfile
 import urllib.request
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -141,3 +144,69 @@ def check_for_update(*, force: bool = False) -> UpdateInfo | None:
         html_url=release.get("html_url", ""),
         release_notes=(release.get("body") or "").strip(),
     )
+
+
+def download_installer(url: str, progress_cb=None) -> Path:
+    """Pobierz instalator do %TEMP%. Zwraca ścieżkę do pobranego pliku.
+
+    Args:
+        url: URL instalatora .exe (browser_download_url z GitHub)
+        progress_cb: opcjonalny callback (downloaded_bytes, total_bytes)
+    """
+    tmp_dir = Path(tempfile.gettempdir())
+    # Nazwa pliku z URL
+    filename = url.rsplit("/", 1)[-1] or "TimeRecord-Setup.exe"
+    dst = tmp_dir / filename
+    log.info("pobieram instalator: %s -> %s", url, dst)
+
+    req = urllib.request.Request(url, headers={"User-Agent": "TimeRecord"})
+    with urllib.request.urlopen(req, timeout=60) as resp:
+        total = int(resp.headers.get("Content-Length", 0))
+        with open(dst, "wb") as f:
+            downloaded = 0
+            while True:
+                chunk = resp.read(64 * 1024)
+                if not chunk:
+                    break
+                f.write(chunk)
+                downloaded += len(chunk)
+                if progress_cb:
+                    progress_cb(downloaded, total)
+    log.info("pobrano: %s (%s bytes)", dst, dst.stat().st_size)
+    return dst
+
+
+def run_installer_silent(installer_path: Path) -> None:
+    """Uruchom instalator w trybie cichym (upgrade).
+
+    Inno Setup z /VERYSILENT /SUPPRESSMSGBOXES /NORESTART:
+    - nie pokazuje kreatora
+    - zabija działający TimeRecord.exe (InitializeSetup w installer.iss)
+    - nadpisuje pliki w {app}
+    - uruchamia nową wersję (postinstall, skipifsilent nie blokuje przy VERYSILENT)
+
+    Ten proces (stara wersja) zostanie zabity przez instalator.
+    """
+    log.info("uruchamiam instalator (silent): %s", installer_path)
+    # /VERYSILENT — brak UI
+    # /SUPPRESSMSGBOXES — brak okienek dialogowych
+    # /NORESTART — bez restartu systemu
+    # /NOCANCEL — użytkownik nie może anulować
+    subprocess.Popen(
+        [str(installer_path), "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/NOCANCEL"],
+        cwd=str(installer_path.parent),
+    )
+    # Ten proces zaraz zostanie zabity przez taskkill w InitializeSetup instalatora.
+
+
+def download_and_install(info: UpdateInfo, progress_cb=None) -> None:
+    """Pobierz instalator i uruchom cichy upgrade.
+
+    Po uruchomieniu instalatora ten proces (stara wersja) zostanie zabity.
+    Nowa wersja wystartuje automatycznie (postinstall w installer.iss).
+    """
+    if not info.download_url:
+        log.warning("brak URL instalatora — nie można auto-aktualizować")
+        raise ValueError("Brak URL instalatora w release")
+    installer = download_installer(info.download_url, progress_cb)
+    run_installer_silent(installer)

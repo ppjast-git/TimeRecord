@@ -7,7 +7,7 @@
 #define MyAppName "TimeRecord"
 #define MyAppPublisher "TimeRecord"
 #define MyAppExeName "TimeRecord.exe"
-#define MyAppVersion "0.1.0"
+#define MyAppVersion "0.2.0"
 #define MyAppURL "https://github.com/ppjast/TimeRecord"
 
 [Setup]
@@ -57,7 +57,7 @@ Name: "{autodesktop}\TimeRecord"; Filename: "{app}\{#MyAppExeName}"; IconFilenam
 Name: "{userstartup}\TimeRecord"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\{#MyAppExeName}"; Tasks: autostart
 
 [Run]
-; Uruchom po instalacji (opcjonalnie)
+; Uruchom po instalacji (opcjonalnie w kreatorze; zawsze po cichej aktualizacji)
 Filename: "{app}\{#MyAppExeName}"; Description: "Uruchom TimeRecord teraz"; Flags: nowait postinstall skipifsilent
 
 [UninstallRun]
@@ -69,7 +69,16 @@ Filename: "{cmd}"; Parameters: "/C taskkill /IM {#MyAppExeName} /F /T"; Flags: r
 Type: filesandordirs; Name: "{app}"
 
 [Code]
+// Zabij działający proces TimeRecord PRZED instalacją (dla upgrade)
+// Bez tego instalator nie może nadpisać TimeRecord.exe (plik zajęty).
 function InitializeSetup(): Boolean;
+var
+  ResultCode: Integer;
 begin
+  // taskkill /IM TimeRecord.exe /F — ciche, ignoruj błędy (proces może nie działać)
+  Exec(ExpandConstant('{cmd}'), '/C taskkill /IM {#MyAppExeName} /F /T', '',
+       SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  // Krótka pauza by system zwolnił plik
+  Sleep(500);
   Result := True;
 end;
