@@ -154,6 +154,53 @@ def _run_inner() -> int:
 
     image = _make_icon_image()
 
+    # --- update checker -------------------------------------------------------
+    from . import __version__
+    from .updater import check_for_update
+
+    _update_info = None  # cache ostatniego wyniku sprawdzenia
+
+    def on_check_update(icon, item):
+        """Ręczne sprawdzenie aktualizacji z menu traya."""
+        icon.notify("Sprawdzam aktualizacje...", "TimeRecord")
+        info = check_for_update(force=True)
+        nonlocal _update_info
+        _update_info = info
+        if info is None:
+            icon.notify(f"Masz najnowszą wersję ({__version__})", "TimeRecord")
+        else:
+            msg = f"Nowa wersja {info.latest_version} dostępna!\nObecna: {info.current_version}"
+            if info.download_url:
+                msg += "\n\nKliknij aby pobrać instalator."
+            else:
+                msg += "\n\nKliknij aby otworzyć stronę release."
+            icon.notify(msg, "TimeRecord — aktualizacja")
+
+    def on_update_download(icon, item):
+        """Otwórz URL pobierania/release w przeglądarce."""
+        if _update_info and _update_info.download_url:
+            webbrowser.open(_update_info.download_url)
+        elif _update_info and _update_info.html_url:
+            webbrowser.open(_update_info.html_url)
+        else:
+            # Fallback: otwórz releases page
+            from .config import SETTINGS
+            if SETTINGS.github_repo:
+                webbrowser.open(f"https://github.com/{SETTINGS.github_repo}/releases/latest")
+
+    def _auto_check_update():
+        """Automatyczne sprawdzenie przy starcie (z cache 24h)."""
+        try:
+            info = check_for_update(force=False)
+            nonlocal _update_info
+            _update_info = info
+            if info:
+                log.info("aktualizacja dostępna: %s -> %s", info.current_version, info.latest_version)
+                msg = f"Nowa wersja {info.latest_version} dostępna!"
+                icon.notify(msg, "TimeRecord — aktualizacja")
+        except Exception as e:
+            log.debug("auto update check failed: %s", e)
+
     def _refresh_tooltip(icon):
         try:
             total = _today_total_seconds(storage)
@@ -183,12 +230,23 @@ def _run_inner() -> int:
             pass
         storage.close()
 
-    menu = pystray.Menu(
-        pystray.MenuItem("Otwórz dashboard", on_open, default=True),
-        pystray.MenuItem("Pauza / Wznów", on_pause),
-        pystray.Menu.SEPARATOR,
-        pystray.MenuItem("Wyjdź", on_quit),
-    )
+    # Dynamiczne menu — aktualizacje pokazują się tylko gdy dostępne
+    def _menu_items():
+        items = [
+            pystray.MenuItem("Otwórz dashboard", on_open, default=True),
+            pystray.MenuItem("Pauza / Wznów", on_pause),
+            pystray.Menu.SEPARATOR,
+            pystray.MenuItem("Sprawdź aktualizacje", on_check_update),
+        ]
+        if _update_info:
+            label = f"Pobierz v{_update_info.latest_version}"
+            items.append(pystray.MenuItem(label, on_update_download))
+        items.append(pystray.Menu.SEPARATOR)
+        items.append(pystray.MenuItem(f"Wersja {__version__}", None, enabled=False))
+        items.append(pystray.MenuItem("Wyjdź", on_quit))
+        return items
+
+    menu = pystray.Menu(lambda: _menu_items())
     icon = pystray.Icon("TimeRecord", image, "TimeRecord", menu)
 
     # odświeżanie tooltipa co 30 s (pystray nie wystawia sygnału zakończenia -> Timer)
@@ -199,6 +257,9 @@ def _run_inner() -> int:
 
     _refresh_tooltip(icon)
     threading.Timer(30, _periodic_tooltip).start()
+
+    # Automatyczne sprawdzenie aktualizacji 5s po starcie (w tle)
+    threading.Timer(5, _auto_check_update).start()
 
     try:
         icon.run()

@@ -92,6 +92,70 @@ events(id, ts_start, ts_end, app, exe, title, tab, browser, host, idle)
 - [vinistoisr/timewarp](https://github.com/vinistoisr/timewarp) — GetForegroundWindow co 1 s + SQLite
 - [yuki-katakami/worktracker](https://github.com/yuki-katakami/worktracker) — minimalizm stdlib
 
+## Dystrybucja i instalacja
+
+### Build instalatora
+
+```powershell
+# Wymagania: PyInstaller + Inno Setup 6
+pip install pyinstaller
+# Inno Setup: https://jrsoftware.org/isdl.php (instalacja per-user OK)
+
+# Pełny build (ikona → PyInstaller → Inno Setup):
+python scripts/build.py
+
+# Tylko PyInstaller (bez instalatora):
+python scripts/build.py --pyinstaller-only
+```
+
+Wynik: `dist/TimeRecord-Setup-v0.1.0.exe` (~22 MB) — samodzielny instalator
+Windows, nie wymaga Pythona na komputerze docelowym.
+
+### Instalacja na innym komputerze
+
+1. Skopiuj `TimeRecord-Setup-vX.Y.Z.exe` na komputer docelowy
+2. Uruchom — instaluje się do `%LOCALAPPDATA%\Programs\TimeRecord` (bez admina)
+3. Skrót w Menu Start + autostart (opcjonalny w kreatorze)
+4. Po instalacji: ikona zegara w trayu, dashboard na `http://127.0.0.1:7231/`
+
+### Aktualizacje
+
+Mechanizm: aplikacja sprawdza GitHub Releases API przy starcie (co 24h, cache
+w `%LOCALAPPDATA%\TimeRecord\update_check.json`) oraz ręcznie z menu traya
+→ „Sprawdź aktualizacje". Jeśli jest nowsza wersja → powiadomienie w trayu
++ pozycja menu „Pobierz vX.Y.Z" (otwiera URL pobierania w przeglądarce).
+
+**Konfiguracja:** ustaw `github_repo` w `timerecord/config.py`:
+```python
+github_repo: str = "twoj-user/TimeRecord"  # format: owner/repo
+```
+
+**Publikacja nowej wersji:**
+```powershell
+# 1. Zaktualizuj wersję w timerecord/__init__.py
+# 2. Build
+python scripts/build.py
+# 3. Commit + tag + push
+git tag v0.2.0
+git push origin v0.2.0
+# 4. Utwórz release na GitHub z instalatorem jako asset
+gh release create v0.2.0 "dist/TimeRecord-Setup-v0.2.0.exe" --title "v0.2.0" --notes "..."
+```
+
+Po opublikowaniu release, wszystkie instalacje TimeRecord pokażą powiadomienie
+o dostępnej aktualizacji przy następnym uruchomieniu (lub po kliknięciu
+„Sprawdź aktualizacje" w menu traya).
+
+### Struktura plików build
+
+```
+timerecord.spec       # konfiguracja PyInstaller (--onedir, bez konsoli)
+installer.iss         # skrypt Inno Setup (instalacja per-user, autostart)
+scripts/make_icon.py  # generuj assets/icon.ico (zegar, wielorozmiarowy)
+scripts/build.py      # orkiestracja: ikona → PyInstaller → Inno Setup
+assets/icon.ico       # ikona aplikacji i instalatora
+```
+
 ## Roadmap (dalszy rozwój)
 
 - rozszerzenie przeglądarki → dokładny URL (jak `aw-watcher-web`)
@@ -99,3 +163,4 @@ events(id, ts_start, ts_end, app, exe, title, tab, browser, host, idle)
 - wykresy godzinowe, heatmapa aktywności
 - eksport CSV/JSON
 - notyfikacje po N godzin pracy
+- auto-instalacja aktualizacji (zamiast ręcznego pobierania)

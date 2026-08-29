@@ -28,6 +28,11 @@ class Settings:
     web_port: int = 7231
     # Nazwa hosta do zapisu w bazie
     hostname: str = os.environ.get("COMPUTERNAME") or "localhost"
+    # Repo GitHub do sprawdzania aktualizacji (format: "owner/repo").
+    # Ustaw na własne repo po pushu na GitHub. Puste = nie sprawdzaj.
+    github_repo: str = ""  # np. "ppjast/TimeRecord"
+    # Co ile godzin sprawdzać aktualizacje automatycznie (0 = tylko ręcznie z menu)
+    update_check_interval_hours: float = 24.0
 
 
 SETTINGS = Settings()

@@ -44,3 +44,6 @@ desktop.ini
 build/
 dist/
 *.egg-info/
+# PyInstaller artefakty
+*.spec.bak
+build/TimeRecord/
