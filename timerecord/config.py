@@ -30,7 +30,7 @@ class Settings:
     hostname: str = os.environ.get("COMPUTERNAME") or "localhost"
     # Repo GitHub do sprawdzania aktualizacji (format: "owner/repo").
     # Ustaw na własne repo po pushu na GitHub. Puste = nie sprawdzaj.
-    github_repo: str = ""  # np. "ppjast/TimeRecord"
+    github_repo: str = "ppjast-git/TimeRecord"
     # Co ile godzin sprawdzać aktualizacje automatycznie (0 = tylko ręcznie z menu)
     update_check_interval_hours: float = 24.0
 
