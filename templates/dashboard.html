@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TimeRecord — Dashboard</title>
+  <style>
+    :root {
+      --bg: #0f1115;
+      --card: #171a21;
+      --card-2: #1d212b;
+      --border: #2a2f3a;
+      --text: #e6e9ef;
+      --muted: #8b93a4;
+      --accent: #4f9cf9;
+      --accent-2: #6ee7b7;
+      --warn: #f0a040;
+      --idle: #6b7280;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+    }
+    header {
+      padding: 20px 28px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    header h1 { margin: 0; font-size: 18px; font-weight: 600; letter-spacing: .3px; }
+    header .sub { color: var(--muted); font-size: 13px; }
+    .status-pill {
+      font-size: 12px; padding: 4px 10px; border-radius: 999px;
+      background: var(--card-2); border: 1px solid var(--border); color: var(--muted);
+    }
+    .status-pill .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+    .dot.live { background: var(--accent-2); box-shadow: 0 0 8px var(--accent-2); }
+    .dot.paused { background: var(--warn); }
+    main { max-width: 1100px; margin: 0 auto; padding: 28px; }
+
+    .grid-top { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+    @media (max-width: 720px) { .grid-top { grid-template-columns: 1fr; } }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px 20px;
+    }
+    .card h2 { margin: 0 0 4px; font-size: 13px; color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: .6px; }
+    .big { font-size: 34px; font-weight: 600; letter-spacing: -.5px; }
+    .big .unit { font-size: 16px; color: var(--muted); margin-left: 6px; font-weight: 400; }
+    .sub-line { color: var(--muted); font-size: 13px; margin-top: 6px; }
+
+    .now-app { font-size: 16px; font-weight: 500; margin-top: 8px; }
+    .now-title { color: var(--muted); font-size: 13px; word-break: break-word; margin-top: 2px; }
+
+    .tabs { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+    .tab {
+      background: var(--card); border: 1px solid var(--border); color: var(--muted);
+      padding: 6px 14px; border-radius: 999px; font-size: 13px; cursor: pointer;
+    }
+    .tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+    .apps-list { list-style: none; margin: 0; padding: 0; }
+    .apps-list li {
+      display: grid; grid-template-columns: 1fr auto auto; gap: 12px; align-items: center;
+      padding: 10px 0; border-bottom: 1px solid var(--border);
+    }
+    .apps-list li:last-child { border-bottom: none; }
+    .app-name { font-weight: 500; font-size: 14px; }
+    .app-bar-wrap {
+      grid-column: 1 / -1; height: 4px; background: var(--card-2); border-radius: 2px; overflow: hidden;
+      margin-top: 4px;
+    }
+    .app-bar { height: 100%; background: var(--accent); border-radius: 2px; transition: width .4s ease; }
+    .app-dur { font-variant-numeric: tabular-nums; font-size: 14px; color: var(--text); }
+    .app-pct { font-variant-numeric: tabular-nums; font-size: 12px; color: var(--muted); width: 48px; text-align: right; }
+
+    .week-row {
+      display: grid; grid-template-columns: 90px 1fr 70px; gap: 10px; align-items: center;
+      padding: 8px 0; border-bottom: 1px solid var(--border);
+    }
+    .week-row:last-child { border-bottom: none; }
+    .week-bar-wrap { height: 8px; background: var(--card-2); border-radius: 4px; overflow: hidden; }
+    .week-bar { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-2)); border-radius: 4px; }
+    .week-day { font-size: 13px; color: var(--muted); }
+    .week-day.today { color: var(--text); font-weight: 600; }
+    .week-dur { font-variant-numeric: tabular-nums; font-size: 13px; text-align: right; }
+
+    .events { font-size: 13px; }
+    .events table { width: 100%; border-collapse: collapse; }
+    .events th, .events td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--border); }
+    .events th { color: var(--muted); font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: .5px; }
+    .events td.time { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .events td.dur { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+    .events tr.idle td { color: var(--idle); }
+
+    .section-title { display: flex; align-items: baseline; justify-content: space-between; margin: 24px 0 12px; }
+    .section-title h3 { margin: 0; font-size: 15px; font-weight: 600; }
+    .section-title .hint { color: var(--muted); font-size: 12px; }
+
+    .controls { display: flex; gap: 8px; }
+    button.btn {
+      background: var(--card-2); border: 1px solid var(--border); color: var(--text);
+      padding: 6px 14px; border-radius: 8px; font-size: 13px; cursor: pointer;
+    }
+    button.btn:hover { border-color: var(--accent); }
+    button.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+    .empty { color: var(--muted); font-size: 13px; padding: 16px 0; }
+    a { color: var(--accent); }
+    footer { color: var(--muted); font-size: 12px; text-align: center; padding: 24px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>TimeRecord</h1>
+      <div class="sub" id="host">—</div>
+    </div>
+    <div class="controls">
+      <span class="status-pill" id="status"><span class="dot live"></span>live</span>
+      <button class="btn" id="btn-pause">Pauza</button>
+      <button class="btn" id="btn-refresh">Odśwież</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="grid-top">
+      <div class="card">
+        <h2>Czas pracy dziś</h2>
+        <div class="big" id="total">—<span class="unit">aktywny</span></div>
+        <div class="sub-line" id="idle-line">nieaktywny: —</div>
+      </div>
+      <div class="card">
+        <h2>Aktualnie</h2>
+        <div class="now-app" id="now-app">—</div>
+        <div class="now-title" id="now-title">—</div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom: 24px;">
+      <h2>Ostatnie 7 dni</h2>
+      <div id="week" style="margin-top: 10px;"></div>
+    </div>
+
+    <div class="section-title">
+      <h3>Aplikacje — <span id="day-label">dziś</span></h3>
+      <div class="tabs">
+        <div class="tab active" data-day="today">Dziś</div>
+        <div class="tab" data-day="yesterday">Wczoraj</div>
+      </div>
+    </div>
+    <div class="card">
+      <ul class="apps-list" id="apps"></ul>
+    </div>
+
+    <div class="section-title">
+      <h3>Ostatnie zdarzenia</h3>
+      <span class="hint">najnowsze na górze</span>
+    </div>
+    <div class="card events">
+      <table>
+        <thead>
+          <tr><th>Czas</th><th>Aplikacja</th><th>Tytuł / zakładka</th><th class="dur">Czas</th></tr>
+        </thead>
+        <tbody id="events"></tbody>
+      </table>
+    </div>
+  </main>
+
+  <footer>TimeRecord · dane lokalnie w SQLite · <span id="db-info"></span> · <span id="last-update">—</span></footer>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    let currentDay = "today";
+
+    function fmt(s) {
+      s = Math.round(s || 0);
+      const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+      if (h) return h + "h " + String(m).padStart(2, "0") + "m";
+      if (m) return m + "m " + String(sec).padStart(2, "0") + "s";
+      return sec + "s";
+    }
+    // UWAGA: liczymy datę LOKALNĄ, nie UTC. new Date().toISOString() zwraca UTC,
+    // co między lokalną północą a UTC-midnight daje zły dzień (np. 00:30 CEST -> UTC 22:30 wczoraj).
+    function localDateISO(d) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    }
+    function todayISO() { return localDateISO(new Date()); }
+    function yesterdayISO() {
+      const d = new Date(); d.setDate(d.getDate() - 1);
+      return localDateISO(d);
+    }
+
+    async function getJSON(url) {
+      const r = await fetch(url);
+      if (!r.ok) throw new Error(r.status);
+      return r.json();
+    }
+
+    async function loadNow() {
+      try {
+        const d = await getJSON("/api/now");
+        $("host").textContent = "host: " + (d.host || "—") + " · interwał " + d.interval + "s";
+        const pill = $("status");
+        if (d.paused) {
+          pill.innerHTML = '<span class="dot paused"></span>pauza';
+          $("btn-pause").textContent = "Wznów";
+        } else {
+          pill.innerHTML = '<span class="dot live"></span>live';
+          $("btn-pause").textContent = "Pauza";
+        }
+        const s = d.sample;
+        if (s) {
+          $("now-app").textContent = s.app + (s.browser ? "  ·  " + s.browser : "");
+          let title = s.title || "(bez tytułu)";
+          if (s.tab) title = "📑 " + s.tab + (s.title ? "  —  " + s.title : "");
+          if (s.idle) title = "⏸ idle (" + title + ")";
+          $("now-title").textContent = title;
+        } else {
+          $("now-app").textContent = "—";
+          $("now-title").textContent = "(brak próbki)";
+        }
+      } catch (e) { console.error(e); }
+    }
+
+    async function loadDay(dateISO, label) {
+      try {
+        const d = await getJSON("/api/day/" + dateISO);
+        $("day-label").textContent = label;
+        $("total").innerHTML = fmt(d.total_seconds) + '<span class="unit">aktywny</span>';
+        $("idle-line").textContent = "nieaktywny (idle): " + fmt(d.idle_seconds);
+        const max = Math.max(...d.apps.map(a => a.dur_seconds), 1);
+        const ul = $("apps");
+        ul.innerHTML = "";
+        if (d.apps.length === 0) {
+          ul.innerHTML = '<li class="empty">Brak danych dla tego dnia.</li>';
+          return;
+        }
+        for (const a of d.apps) {
+          const pct = Math.round((a.dur_seconds / d.total_seconds) * 100);
+          const li = document.createElement("li");
+          li.innerHTML = `
+            <span class="app-name">${escapeHtml(a.app)}</span>
+            <span class="app-dur">${fmt(a.dur_seconds)}</span>
+            <span class="app-pct">${pct}%</span>
+            <div class="app-bar-wrap"><div class="app-bar" style="width:${(a.dur_seconds/max*100).toFixed(1)}%"></div></div>
+          `;
+          ul.appendChild(li);
+        }
+      } catch (e) { console.error(e); }
+    }
+
+    async function loadWeek() {
+      try {
+        const d = await getJSON("/api/week");
+        const today = todayISO();
+        const max = Math.max(...d.days.map(x => x.total_seconds), 1);
+        const wrap = $("week");
+        wrap.innerHTML = "";
+        for (const day of d.days) {
+          const isToday = day.day === today;
+          const row = document.createElement("div");
+          row.className = "week-row";
+          const dateObj = new Date(day.day + "T00:00:00");
+          const wd = dateObj.toLocaleDateString("pl-PL", { weekday: "short" });
+          const md = dateObj.toLocaleDateString("pl-PL", { day: "2-digit", month: "2-digit" });
+          row.innerHTML = `
+            <span class="week-day ${isToday ? "today" : ""}">${wd} ${md}${isToday ? " •" : ""}</span>
+            <div class="week-bar-wrap"><div class="week-bar" style="width:${(day.total_seconds/max*100).toFixed(1)}%"></div></div>
+            <span class="week-dur">${fmt(day.total_seconds)}</span>
+          `;
+          wrap.appendChild(row);
+        }
+      } catch (e) { console.error(e); }
+    }
+
+    async function loadEvents() {
+      try {
+        const date = currentDay === "today" ? todayISO() : yesterdayISO();
+        const d = await getJSON("/api/events?date=" + date + "&limit=40");
+        const tb = $("events");
+        tb.innerHTML = "";
+        if (d.events.length === 0) {
+          tb.innerHTML = '<tr><td colspan="4" class="empty">Brak zdarzeń.</td></tr>';
+          return;
+        }
+        for (const e of d.events) {
+          const tr = document.createElement("tr");
+          if (e.idle) tr.className = "idle";
+          const start = new Date(e.ts_start);
+          const time = start.toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+          let title = e.title || "(bez tytułu)";
+          if (e.tab) title = "📑 " + e.tab + (e.title ? "  —  " + e.title : "");
+          if (e.idle) title = "⏸ idle";
+          tr.innerHTML = `
+            <td class="time">${time}</td>
+            <td>${escapeHtml(e.app)}</td>
+            <td>${escapeHtml(title)}</td>
+            <td class="dur">${fmt(e.dur_seconds)}</td>
+          `;
+          tb.appendChild(tr);
+        }
+      } catch (e) { console.error(e); }
+    }
+
+    function escapeHtml(s) {
+      return String(s == null ? "" : s)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    async function refreshAll() {
+      try {
+        await Promise.all([loadNow(), loadWeek()]);
+        const date = currentDay === "today" ? todayISO() : yesterdayISO();
+        const label = currentDay === "today" ? "dziś" : "wczoraj";
+        await loadDay(date, label);
+        await loadEvents();
+        const t = new Date().toLocaleTimeString("pl-PL");
+        $("last-update").textContent = "zaktualizowano " + t;
+      } catch (e) {
+        console.error("refreshAll failed", e);
+        $("last-update").textContent = "błąd odświeżania: " + e.message;
+      }
+    }
+
+    document.querySelectorAll(".tab").forEach(t => {
+      t.addEventListener("click", () => {
+        document.querySelectorAll(".tab").forEach(x => x.classList.remove("active"));
+        t.classList.add("active");
+        currentDay = t.dataset.day;
+        refreshAll();
+      });
+    });
+
+    $("btn-refresh").addEventListener("click", refreshAll);
+    $("btn-pause").addEventListener("click", async () => {
+      const d = await getJSON("/api/now");
+      if (d.paused) { await fetch("/api/resume", { method: "POST" }); }
+      else { await fetch("/api/pause", { method: "POST" }); }
+      loadNow();
+    });
+
+    refreshAll();
+    setInterval(loadNow, 5000);
+    // Odświeżaj podsumowanie co 10 s (gdy widok na "dziś") — baza rośnie na żywo.
+    setInterval(() => { if (currentDay === "today") refreshAll(); }, 10000);
+  </script>
+</body>
+</html>
