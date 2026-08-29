@@ -26,6 +26,8 @@ time.db-shm
 
 # Logi
 *.log
+*.log.err
+startup_debug.*
 
 # IDE / edytory
 .vscode/

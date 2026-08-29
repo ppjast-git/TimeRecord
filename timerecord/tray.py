@@ -9,6 +9,7 @@ Uruchamia:
 from __future__ import annotations
 
 import logging
+import logging.handlers
 import os
 import sys
 import threading
@@ -63,13 +64,60 @@ def _open_dashboard():
         log.warning("nie otwarto przeglądarki: %s", e)
 
 
-def run() -> int:
+def _ensure_stdio() -> None:
+    """Pod pythonw.exe sys.stdout/stderr są None — uvicorn/pystray tego nie znoszą.
+    Podstawiamy no-op streamy (zapis do pliku logu obsługuje logging osobno).
+    """
+    class _NullStream:
+        def write(self, *a, **k): pass
+        def flush(self, *a, **k): pass
+        def isatty(self): return False
+        def fileno(self): raise OSError("no fileno")
+        def close(self): pass
+    if sys.stdout is None:
+        sys.stdout = _NullStream()  # type: ignore[assignment]
+    if sys.stderr is None:
+        sys.stderr = _NullStream()  # type: ignore[assignment]
+
+
+def _setup_logging() -> None:
+    """Konfiguruj logowanie — do pliku (zawsze) + do stderr (gdy jest konsola)."""
+    from .config import DATA_DIR
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    log_file = DATA_DIR / "timerecord.log"
+    handlers: list[logging.Handler] = [
+        logging.handlers.RotatingFileHandler(
+            log_file, maxBytes=1_000_000, backupCount=3, encoding="utf-8"
+        ),
+    ]
+    # stderr tylko gdy realnie jest konsola (pythonw.exe jej nie ma -> fileno() rzuci)
+    try:
+        sys.stderr.fileno()
+        handlers.append(logging.StreamHandler(sys.stderr))
+    except (AttributeError, OSError, ValueError):
+        pass
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+        handlers=handlers,
+        force=True,
     )
-    log.info("TimeRecord start (host=%s, port=%s)", SETTINGS.web_host, SETTINGS.web_port)
 
+
+def run() -> int:
+    _ensure_stdio()
+    _setup_logging()
+    log.info("TimeRecord start (host=%s, port=%s, pid=%s)",
+             SETTINGS.web_host, SETTINGS.web_port, os.getpid())
+
+    try:
+        return _run_inner()
+    except Exception:
+        log.exception("FATAL: nieprzechwycony wyjatek w run()")
+        return 1
+
+
+def _run_inner() -> int:
     storage = Storage()
     collector = Collector(storage)
     collector.start()
