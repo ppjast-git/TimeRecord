@@ -1,8 +1,62 @@
 # TimeRecord
 
-Lekki, **lokalny** tracker czasu pracy na Windows 10. Rejestruje aktywne okno
-(nazwę procesu, tytuł okna, tytuł zakładki przeglądarki), wykrywa idle (AFK) i
-prezentuje podsumowania w dashboardzie webowym. Dane tylko w lokalnym SQLite.
+[![Version](https://img.shields.io/github/v/release/ppjast-git/TimeRecord)](https://github.com/ppjast-git/TimeRecord/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+Lekki, **lokalny** tracker czasu pracy na Windows. Rejestruje aktywne okno
+(nazwę procesu, tytuł okna, tytuł zakładki przeglądarki), wykrywa idle (AFK)
+i prezentuje podsumowania w dashboardzie webowym. **Dane tylko w lokalnym
+SQLite — nic nie jest wysyłane do chmury ani żadnego serwera.**
+
+## Funkcje
+
+- **Automatyczne śledzenie** — próbkowanie aktywnego okna co 5 s (nazwa procesu, tytuł, zakładka przeglądarki)
+- **Detekcja AFK** — idle powyżej 3 min oznaczane osobno, nie wlicza się do czasu pracy
+- **Dashboard webowy** — podsumowanie dzienne, per-aplikacja, ostatnie zdarzenia, aktualna próbka
+- **REST API** — wszystkie dane dostępne przez HTTP na localhost (dla integracji/eksportu)
+- **Ikona w trayu** — tooltip z dzisiejszym czasem pracy, pauza/wznowienie, dashboard
+- **Autostart z systemem** — uruchamia się automatycznie po logowaniu
+- **Auto-aktualizacja** — sprawdza GitHub Releases, cichy upgrade z menu traya
+- **Prywatność** — dane wyłącznie lokalne (SQLite), brak telemetrii, brak konta
+
+## Wymagania
+
+- Windows 10/11 (x64)
+- ~25 MB wolnego miejsca na dysku
+- **Python nie wymagany** — instalator zawiera wszystko
+
+## Pobranie i instalacja
+
+1. Pobierz instalator z [**Latest Release**](https://github.com/ppjast-git/TimeRecord/releases/latest)
+2. Uruchom `TimeRecord-Setup-vX.Y.Z.exe` — instaluje się do `%LOCALAPPDATA%\Programs\TimeRecord` (bez uprawnień administratora)
+3. Po instalacji: ikona zegara w trayu, dashboard na `http://127.0.0.1:7231/`
+4. Autostart z systemem jest włączony domyślnie (można odznaczyć w kreatorze)
+
+## Prywatność
+
+TimeRecord jest zaprojektowany z naciskiem na prywatność:
+
+- **Dane wyłącznie lokalne** — wszystkie zdarzenia w `%LOCALAPPDATA%\TimeRecord\time.db` (SQLite). Nigdy nie opuszczają Twojego komputera.
+- **Brak telemetrii** — aplikacja nie wysyła żadnych danych do żadnego serwera.
+- **Brak konta** — nie wymaga logowania, rejestracji, ani połączenia z internetem.
+- **Jedyna komunikacja sieciowa** — sprawdzanie aktualizacji przez GitHub API (publiczne API, anonimowe, można wyłączyć w `config.py`).
+- **Dashboard tylko na localhost** — `127.0.0.1:7231`, niedostępny z innych komputerów.
+- **Open source** — pełny kod dostępny w tym repo, możesz zweryfikować samodzielnie.
+
+## REST API
+
+Dashboard dostępny na `http://127.0.0.1:7231/`. Endpointy:
+
+| Endpoint                  | Opis                                   |
+|---------------------------|----------------------------------------|
+| `GET /`                   | Dashboard HTML                         |
+| `GET /api/today`          | Suma dzisiaj + per-app                 |
+| `GET /api/day/YYYY-MM-DD` | Suma dla wskazanego dnia               |
+| `GET /api/week`           | Ostatnie 7 dni                         |
+| `GET /api/events?date=`   | Ostatnie zdarzenia dnia                |
+| `GET /api/now`            | Aktualna próbka + stan pauzy           |
+| `POST /api/pause`         | Pauza collectora                       |
+| `POST /api/resume`        | Wznowienie collectora                  |
 
 ## Architektura
 
@@ -10,7 +64,7 @@ Jeden proces Pythona, trzy warstwy:
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│  proces TimeRecord (pythonw.exe run.py)                          │
+│  proces TimeRecord                                               │
 │                                                                  │
 │  ┌────────────┐   ┌──────────────┐   ┌────────────────────────┐  │
 │  │ Collector  │──▶│   Storage    │◀──│  FastAPI dashboard     │  │
@@ -25,57 +79,31 @@ Jeden proces Pythona, trzy warstwy:
             %LOCALAPPDATA%\TimeRecord\time.db
 ```
 
-- **Collector** — co `sample_interval` (5 s) pobiera aktywne okno przez
-  `win32gui.GetForegroundWindow`, nazwę procesu przez `psutil`, idle przez
-  `GetLastInputInfo`. Parsuje tytuł okna przeglądarki → tytuł zakładki.
-- **Storage** — SQLite z **heartbeat-merge**: sąsiadujące próbki o tych samych
-  danych (app/title/tab/browser/idle) i przerwie ≤ `pulsetime` (15 s) są łączone
-  w jedno zdarzenie (rozszerzenie `ts_end`). Insiprowane ActivityWatch.
+- **Collector** — co 5 s pobiera aktywne okno przez `win32gui.GetForegroundWindow`, nazwę procesu przez `psutil`, idle przez `GetLastInputInfo`. Parsuje tytuł okna przeglądarki → tytuł zakładki.
+- **Storage** — SQLite z **heartbeat-merge**: sąsiadujące próbki o tych samych danych i przerwie ≤ 15 s są łączone w jedno zdarzenie. Inspiracja: [ActivityWatch](https://github.com/ActivityWatch/activitywatch).
 - **Webapp** — FastAPI serwuje dashboard HTML + REST API na `127.0.0.1:7231`.
-- **Tray** — `pystray` ikona z menu: *Otwórz dashboard*, *Pauza/Wznów*, *Wyjdź*.
-  Tooltip pokazuje dzisiejszy łączny czas pracy.
+- **Tray** — `pystray` ikona z menu: *Otwórz dashboard*, *Pauza/Wznów*, *Sprawdź aktualizacje*, *Wyjdź*.
 
-## Instalacja
+## Aktualizacje
 
-```powershell
-cd D:\PJ\TimeRecord
-pip install -r requirements.txt
-python -m timerecord.tray        # lub: python run.py
-```
+Aplikacja sprawdza GitHub Releases API przy starcie (co 24 h) oraz ręcznie z menu traya → **„Sprawdź aktualizacje"**. Jeśli jest nowsza wersja:
 
-W trayu pojawi się ikona zegara. Klik prawy → *Otwórz dashboard* (lub dwuklik).
-
-## Autostart z systemem
-
-```powershell
-python install_startup.py install     # tworzy skrót w shell:startup
-python install_startup.py status      # sprawdza
-python install_startup.py uninstall   # usuwa
-```
-
-Skrót uruchamia `pythonw.exe run.py` zminimalizowany (bez okna konsoli).
-
-## REST API
-
-| Endpoint                  | Opis                                   |
-|---------------------------|----------------------------------------|
-| `GET /`                   | Dashboard HTML                         |
-| `GET /api/today`          | Suma dzisiaj + per-app                 |
-| `GET /api/day/YYYY-MM-DD` | Suma dla wskazanego dnia               |
-| `GET /api/week`           | Ostatnie 7 dni                         |
-| `GET /api/events?date=`   | Ostatnie zdarzenia dnia                |
-| `GET /api/now`            | Aktualna próbka + stan pauzy           |
-| `POST /api/pause`         | Pauza collectora                       |
-| `POST /api/resume`        | Wznowienie collectora                  |
+- **„Aktualizuj automatycznie → vX.Y.Z"** — pobiera instalator w tle i uruchamia cichy upgrade (instalator zabija stary proces, instaluje nową wersję, uruchamia ją automatycznie; baza danych jest zachowywana)
+- **„Pobierz ręcznie (przeglądarka)"** — otwiera URL instalatora w przeglądarce
 
 ## Konfiguracja
 
 Edytuj `timerecord/config.py` (`Settings`):
 
-- `sample_interval` — interwał próbkowania (s)
-- `pulsetime` — okno łączenia heartbeats (s)
-- `idle_threshold` — próg AFK (s)
-- `web_host`, `web_port` — adres dashboardu
+| Parametr | Domyślnie | Opis |
+|---|---|---|
+| `sample_interval` | 5.0 s | interwał próbkowania |
+| `pulsetime` | 15.0 s | okno łączenia heartbeats |
+| `idle_threshold` | 180.0 s | próg AFK (3 min) |
+| `web_host` | `127.0.0.1` | adres dashboardu |
+| `web_port` | `7231` | port dashboardu |
+| `github_repo` | `ppjast-git/TimeRecord` | repo do sprawdzania aktualizacji |
+| `update_check_interval_hours` | 24.0 | co ile godzin auto-sprawdzać |
 
 ## Schemat bazy
 
@@ -85,82 +113,56 @@ events(id, ts_start, ts_end, app, exe, title, tab, browser, host, idle)
 
 `ts_start`/`ts_end` w UTC (ISO8601). `idle=1` oznacza okres nieaktywności.
 
-## Inspiracje
+## Development
 
-- [ActivityWatch](https://github.com/ActivityWatch/activitywatch) — heartbeat-merge, modularność
-- [HafidIdrissi/Time-Tracker](https://github.com/HafidIdrissi/Time-Tracker) — parsowanie tytułów przeglądarek
-- [vinistoisr/timewarp](https://github.com/vinistoisr/timewarp) — GetForegroundWindow co 1 s + SQLite
-- [yuki-katakami/worktracker](https://github.com/yuki-katakami/worktracker) — minimalizm stdlib
+### Uruchomienie ze źródeł
 
-## Dystrybucja i instalacja
+```powershell
+git clone https://github.com/ppjast-git/TimeRecord.git
+cd TimeRecord
+pip install -r requirements.txt
+python run.py
+```
 
 ### Build instalatora
 
+Wymagania: [PyInstaller](https://pypi.org/project/pyinstaller/) + [Inno Setup 6](https://jrsoftware.org/isdl.php)
+
 ```powershell
-# Wymagania: PyInstaller + Inno Setup 6
 pip install pyinstaller
-# Inno Setup: https://jrsoftware.org/isdl.php (instalacja per-user OK)
-
-# Pełny build (ikona → PyInstaller → Inno Setup):
-python scripts/build.py
-
-# Tylko PyInstaller (bez instalatora):
-python scripts/build.py --pyinstaller-only
+python scripts/build.py          # pełny build: ikona → PyInstaller → Inno Setup
 ```
 
-Wynik: `dist/TimeRecord-Setup-v0.1.0.exe` (~22 MB) — samodzielny instalator
-Windows, nie wymaga Pythona na komputerze docelowym.
+Wynik: `dist/TimeRecord-Setup-vX.Y.Z.exe` (~22 MB) — samodzielny instalator Windows.
 
-### Instalacja na innym komputerze
+### Publikacja nowej wersji
 
-1. Skopiuj `TimeRecord-Setup-vX.Y.Z.exe` na komputer docelowy
-2. Uruchom — instaluje się do `%LOCALAPPDATA%\Programs\TimeRecord` (bez admina)
-3. Skrót w Menu Start + autostart (opcjonalny w kreatorze)
-4. Po instalacji: ikona zegara w trayu, dashboard na `http://127.0.0.1:7231/`
-
-### Aktualizacje
-
-Mechanizm: aplikacja sprawdza GitHub Releases API przy starcie (co 24h, cache
-w `%LOCALAPPDATA%\TimeRecord\update_check.json`) oraz ręcznie z menu traya
-→ „Sprawdź aktualizacje". Jeśli jest nowsza wersja → powiadomienie w trayu
-+ pozycja menu „Pobierz vX.Y.Z" (otwiera URL pobierania w przeglądarce).
-
-**Konfiguracja:** ustaw `github_repo` w `timerecord/config.py`:
-```python
-github_repo: str = "twoj-user/TimeRecord"  # format: owner/repo
-```
-
-**Publikacja nowej wersji:**
 ```powershell
 # 1. Zaktualizuj wersję w timerecord/__init__.py
 # 2. Build
 python scripts/build.py
 # 3. Commit + tag + push
-git tag v0.2.0
-git push origin v0.2.0
-# 4. Utwórz release na GitHub z instalatorem jako asset
-gh release create v0.2.0 "dist/TimeRecord-Setup-v0.2.0.exe" --title "v0.2.0" --notes "..."
+git tag -a vX.Y.Z -m "vX.Y.Z — opis"
+git push origin master
+git push origin vX.Y.Z
+# 4. Utwórz release na GitHub z dist/TimeRecord-Setup-vX.Y.Z.exe jako asset
 ```
 
-Po opublikowaniu release, wszystkie instalacje TimeRecord pokażą powiadomienie
-o dostępnej aktualizacji przy następnym uruchomieniu (lub po kliknięciu
-„Sprawdź aktualizacje" w menu traya).
+## Inspiracje
 
-### Struktura plików build
+- [ActivityWatch](https://github.com/ActivityWatch/activitywatch) — heartbeat-merge, modularność
+- [HafidIdrissi/Time-Tracker](https://github.com/HafidIdrissi/Time-Tracker) — parsowanie tytułów przeglądarek
+- [vinistoisr/timewarp](https://github.com/vinistoisr/timewarp) — GetForegroundWindow + SQLite
+- [yuki-katakami/worktracker](https://github.com/yuki-katakami/worktracker) — minimalizm stdlib
 
-```
-timerecord.spec       # konfiguracja PyInstaller (--onedir, bez konsoli)
-installer.iss         # skrypt Inno Setup (instalacja per-user, autostart)
-scripts/make_icon.py  # generuj assets/icon.ico (zegar, wielorozmiarowy)
-scripts/build.py      # orkiestracja: ikona → PyInstaller → Inno Setup
-assets/icon.ico       # ikona aplikacji i instalatora
-```
+## Roadmap
 
-## Roadmap (dalszy rozwój)
+- [ ] rozszerzenie przeglądarki → dokładny URL (jak `aw-watcher-web`)
+- [ ] kategorie/reguły dla aplikacji (praca/prywatne)
+- [ ] wykresy godzinowe, heatmapa aktywności
+- [ ] eksport CSV/JSON
+- [ ] notyfikacje po N godzin pracy
 
-- rozszerzenie przeglądarki → dokładny URL (jak `aw-watcher-web`)
-- kategorie/reguły dla aplikacji (praca/prywatne)
-- wykresy godzinowe, heatmapa aktywności
-- eksport CSV/JSON
-- notyfikacje po N godzin pracy
-- auto-instalacja aktualizacji (zamiast ręcznego pobierania)
+## Licencja
+
+MIT — zobacz [LICENSE](LICENSE).
