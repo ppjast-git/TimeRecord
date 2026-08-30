@@ -7,7 +7,7 @@
 #define MyAppName "TimeRecord"
 #define MyAppPublisher "TimeRecord"
 #define MyAppExeName "TimeRecord.exe"
-#define MyAppVersion "0.2.0"
+#define MyAppVersion "0.2.1"
 #define MyAppURL "https://github.com/ppjast-git/TimeRecord"
 
 [Setup]
