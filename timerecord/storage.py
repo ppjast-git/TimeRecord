@@ -208,6 +208,53 @@ class Storage:
             ).fetchall()
         return [dict(r) for r in rows]
 
+    # --- top breakdown for dashboard hover ---------------------------------
+    def top_titles_for_day_and_app(
+        self,
+        *,
+        day: Optional[datetime],
+        app: str,
+        limit: int = 8,
+    ) -> list[dict]:
+        """Zwraca top tytułów (lub tabów) dla dnia i aplikacji.
+
+        Agregacja: preferujemy `tab` (zakładka), a gdy brak to `title`.
+        Zdarzenia z idle=1 są pomijane (pokazujemy aktywny czas).
+        """
+        day = day or datetime.now().astimezone()
+        start_utc, end_utc = self._day_bounds_utc(day)
+        s_iso = start_utc.isoformat(timespec="seconds")
+        e_iso = end_utc.isoformat(timespec="seconds")
+        with self._cursor() as (_, cur):
+            rows = cur.execute(
+                """
+                SELECT
+                  COALESCE(NULLIF(tab, ''), title) AS key,
+                  SUM(
+                    (julianday(MIN(ts_end, ?)) - julianday(MAX(ts_start, ?))) * 86400.0
+                  ) AS dur_seconds,
+                  COUNT(*) AS n_events
+                FROM events
+                WHERE ts_end > ? AND ts_start < ?
+                  AND app = ?
+                  AND idle = 0
+                  AND COALESCE(NULLIF(tab, ''), title) IS NOT NULL
+                GROUP BY key
+                ORDER BY dur_seconds DESC
+                LIMIT ?
+                """,
+                (e_iso, s_iso, s_iso, e_iso, app, limit),
+            ).fetchall()
+
+        return [
+            {
+                "key": r["key"],
+                "dur_seconds": round(r["dur_seconds"] or 0, 1),
+                "n_events": r["n_events"],
+            }
+            for r in rows
+        ]
+
     def week_summary(self, today: Optional[datetime] = None) -> list:
         today = today or datetime.now().astimezone()
         out = []

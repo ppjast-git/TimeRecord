@@ -78,6 +78,20 @@ def create_app(storage: Storage, collector: Collector) -> FastAPI:
             e["dur_human"] = _fmt_duration(e.get("dur_seconds") or 0)
         return JSONResponse({"events": events})
 
+    @app.get("/api/day/{date}/app/{app}/top-titles")
+    async def api_top_titles(
+        date: str,
+        app: str,
+        limit: int = 8,
+    ) -> JSONResponse:
+        try:
+            d = _dt.datetime.fromisoformat(date).astimezone()
+        except ValueError:
+            raise HTTPException(400, "Niepoprawna data (użyj YYYY-MM-DD)")
+        limit = max(1, min(int(limit), 20))
+        rows = storage.top_titles_for_day_and_app(day=d, app=app, limit=limit)
+        return JSONResponse({"app": app, "day": d.date().isoformat(), "items": rows})
+
     @app.get("/api/now")
     async def api_now() -> JSONResponse:
         s = collector.last_sample

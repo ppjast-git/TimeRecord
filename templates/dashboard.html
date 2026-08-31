@@ -73,6 +73,7 @@
     .apps-list li {
       display: grid; grid-template-columns: 1fr auto auto; gap: 12px; align-items: center;
       padding: 10px 0; border-bottom: 1px solid var(--border);
+      position: relative;
     }
     .apps-list li:last-child { border-bottom: none; }
     .app-name { font-weight: 500; font-size: 14px; }
@@ -83,6 +84,50 @@
     .app-bar { height: 100%; background: var(--accent); border-radius: 2px; transition: width .4s ease; }
     .app-dur { font-variant-numeric: tabular-nums; font-size: 14px; color: var(--text); }
     .app-pct { font-variant-numeric: tabular-nums; font-size: 12px; color: var(--muted); width: 48px; text-align: right; }
+
+    .tooltip {
+      position: absolute;
+      left: 0;
+      top: calc(100% + 10px);
+      z-index: 5;
+      min-width: 320px;
+      max-width: 520px;
+      background: rgba(23, 26, 33, 0.98);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 12px;
+      box-shadow: 0 16px 40px rgba(0,0,0,.45);
+      pointer-events: none;
+      display: none;
+    }
+    .tooltip .tt-title {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .6px;
+      margin-bottom: 6px;
+      font-weight: 500;
+    }
+    .tooltip .tt-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      padding: 6px 0;
+      border-top: 1px solid var(--border);
+      align-items: baseline;
+    }
+    .tooltip .tt-row:first-of-type { border-top: none; padding-top: 2px; }
+    .tooltip .tt-key {
+      color: var(--text);
+      font-size: 13px;
+      word-break: break-word;
+    }
+    .tooltip .tt-dur {
+      color: var(--muted);
+      font-size: 13px;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
 
     .week-row {
       display: grid; grid-template-columns: 90px 1fr 70px; gap: 10px; align-items: center;
@@ -243,6 +288,9 @@
         $("total").innerHTML = fmt(d.total_seconds) + '<span class="unit">aktywny</span>';
         $("idle-line").textContent = "nieaktywny (idle): " + fmt(d.idle_seconds);
         const max = Math.max(...d.apps.map(a => a.dur_seconds), 1);
+        // Used for accurate tooltip percentages
+        const appTotals = new Map();
+        for (const a of d.apps) appTotals.set(a.app, a.dur_seconds);
         const ul = $("apps");
         ul.innerHTML = "";
         if (d.apps.length === 0) {
@@ -257,10 +305,49 @@
             <span class="app-dur">${fmt(a.dur_seconds)}</span>
             <span class="app-pct">${pct}%</span>
             <div class="app-bar-wrap"><div class="app-bar" style="width:${(a.dur_seconds/max*100).toFixed(1)}%"></div></div>
+            <div class="tooltip" id="tt-${encodeURIComponent(a.app)}"></div>
           `;
+          li.dataset.app = a.app;
+          li.dataset.appTotal = String(a.dur_seconds);
           ul.appendChild(li);
         }
       } catch (e) { console.error(e); }
+    }
+
+    const ttCache = new Map();
+    let ttAbort = null;
+    let activeTooltip = null;
+    let hoverTimeout = null;
+
+    function renderTooltip(container, app, items, totalForApp) {
+      const header = `${app} · top tytuły`;
+      const maxDur = Math.max(...items.map(x => x.dur_seconds), 1);
+      container.innerHTML = `
+        <div class="tt-title">${escapeHtml(header)}</div>
+        ${items.map(it => {
+          const p = totalForApp > 0 ? Math.round((it.dur_seconds / totalForApp) * 100) : 0;
+          return `
+            <div class="tt-row">
+              <div class="tt-key">${escapeHtml(it.key || '(bez klucza)')}</div>
+              <div class="tt-dur">${fmt(it.dur_seconds)} <span style="color: var(--muted);">(${p}%)</span></div>
+            </div>
+          `;
+        }).join('')}
+      `;
+    }
+
+    async function loadTopTitlesForApp(app) {
+      const date = currentDay === "today" ? todayISO() : yesterdayISO();
+      const cacheKey = `${date}::${app}`;
+      if (ttCache.has(cacheKey)) return ttCache.get(cacheKey);
+
+      const url = `/api/day/${date}/app/${encodeURIComponent(app)}/top-titles?limit=8`;
+      const ctrl = new AbortController();
+      if (ttAbort) ttAbort.abort();
+      ttAbort = ctrl;
+      const d = await getJSON(url + `&v=${Date.now()}`); // bust caches at proxy level
+      ttCache.set(cacheKey, d.items || []);
+      return ttCache.get(cacheKey);
     }
 
     async function loadWeek() {
@@ -358,6 +445,54 @@
     setInterval(loadNow, 5000);
     // Odświeżaj podsumowanie co 10 s (gdy widok na "dziś") — baza rośnie na żywo.
     setInterval(() => { if (currentDay === "today") refreshAll(); }, 10000);
+
+    function hideActiveTooltip() {
+      if (activeTooltip) {
+        activeTooltip.style.display = 'none';
+        activeTooltip = null;
+      }
+    }
+
+    // Hover tooltip dla pasków aplikacji
+    document.addEventListener('mouseover', (ev) => {
+      const li = ev.target.closest && ev.target.closest('#apps li');
+      if (!li) return;
+      const app = li.dataset.app;
+      if (!app) return;
+      const tt = li.querySelector('.tooltip');
+      if (!tt) return;
+
+      // debounce, żeby nie generować tooltipów przy szybkich ruchach
+      if (hoverTimeout) clearTimeout(hoverTimeout);
+      hoverTimeout = setTimeout(async () => {
+        hideActiveTooltip();
+        activeTooltip = tt;
+        activeTooltip.style.display = 'block';
+        activeTooltip.innerHTML = `<div class="tt-title">${escapeHtml(app)} · ładowanie…</div>`;
+
+        try {
+          const items = await loadTopTitlesForApp(app);
+          const totalForApp = Number(activeTooltip.closest('li')?.dataset?.appTotal || 0);
+          renderTooltip(activeTooltip, app, items, totalForApp);
+        } catch (e) {
+          activeTooltip.style.display = 'block';
+          activeTooltip.innerHTML = `<div class="tt-title">${escapeHtml(app)} · błąd</div>`;
+          console.error(e);
+        }
+      }, 180);
+    });
+
+    document.addEventListener('mouseout', (ev) => {
+      const related = ev.relatedTarget;
+      if (!related) {
+        hideActiveTooltip();
+        return;
+      }
+      // jeśli wchodzimy w tooltip / wychodzimy tylko po wnętrzu karty, nie chowaj
+      const fromLi = ev.target && ev.target.closest && ev.target.closest('#apps li');
+      const toInsideApps = related.closest && related.closest('#apps');
+      if (!fromLi || !toInsideApps) hideActiveTooltip();
+    });
   </script>
 </body>
 </html>
