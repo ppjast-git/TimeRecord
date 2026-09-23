@@ -393,11 +393,11 @@
       <ul class="apps-list" id="apps"></ul>
     </div>
 
-    <div class="section-title">
-      <h3>Ostatnie zdarzenia</h3>
+    <div class="section-title" id="events-toggle" style="cursor:pointer;user-select:none;" title="Kliknij, aby rozwinąć/zwinąć">
+      <h3><span id="events-chevron" style="display:inline-block;transition:transform .2s;color:var(--muted);font-size:11px;margin-right:6px;">▸</span>Ostatnie zdarzenia</h3>
       <span class="hint" id="events-hint">najnowsze na górze</span>
     </div>
-    <div class="card events">
+    <div class="card events" id="events-card" style="display:none;">
       <table>
         <thead>
           <tr><th>Czas</th><th>Aplikacja</th><th>Tytuł / zakładka</th><th class="dur">Czas</th></tr>
@@ -920,6 +920,17 @@
         grid.appendChild(cell);
       }
     }
+
+    // Ostatnie zdarzenia: zwijane na żądanie (stan trwały w localStorage)
+    const EVENTS_OPEN_KEY = "tr-events-open";
+    function setEventsOpen(open) {
+      $("events-card").style.display = open ? "" : "none";
+      $("events-chevron").style.transform = open ? "rotate(90deg)" : "";
+      localStorage.setItem(EVENTS_OPEN_KEY, open ? "1" : "0");
+    }
+    $("events-toggle").addEventListener("click", () =>
+      setEventsOpen($("events-card").style.display === "none"));
+    setEventsOpen(localStorage.getItem(EVENTS_OPEN_KEY) === "1");
 
     async function loadEvents() {
       try {
