@@ -592,27 +592,61 @@
         $("idle-line").textContent = "nieaktywny (idle): " + fmt(d.idle_seconds);
         const max = Math.max(...d.apps.map(a => a.dur_seconds), 1);
         const ul = $("apps");
-        ul.innerHTML = "";
         if (d.apps.length === 0) {
           ul.innerHTML = '<li class="empty">Brak danych dla tego dnia.</li>';
           return;
         }
+        const emptyRow = ul.querySelector("li.empty");
+        if (emptyRow) emptyRow.remove();
+
+        // Aktualizacja in-place: istniejące wiersze dostają nowe liczby/paski,
+        // bez niszczenia DOM -> rozwinięte panele i warianty przetrwają refresh.
+        const existing = new Map();
+        ul.querySelectorAll("li[data-app]").forEach(li => existing.set(li.dataset.app, li));
         for (const a of d.apps) {
           const pct = Math.round((a.dur_seconds / d.total_seconds) * 100);
-          const li = document.createElement("li");
-          li.innerHTML = `
-            <div class="app-main" title="Kliknij, aby grupować tytuły po podobieństwie">
-              <span class="app-name">${escapeHtml(a.app)}</span>
-              <span class="app-dur">${fmt(a.dur_seconds)}</span>
-              <span class="app-pct">${pct}%</span>
-              <div class="app-bar-wrap"><div class="app-bar" style="width:${(a.dur_seconds/max*100).toFixed(1)}%"></div></div>
-              <div class="tooltip" id="tt-${encodeURIComponent(a.app)}"></div>
-            </div>
-            <div class="app-drill" hidden></div>
-          `;
-          li.dataset.app = a.app;
+          let li = existing.get(a.app);
+          if (!li) {
+            li = document.createElement("li");
+            li.innerHTML = `
+              <div class="app-main" title="Kliknij, aby grupować tytuły po podobieństwie">
+                <span class="app-name">${escapeHtml(a.app)}</span>
+                <span class="app-dur"></span>
+                <span class="app-pct"></span>
+                <div class="app-bar-wrap"><div class="app-bar"></div></div>
+                <div class="tooltip" id="tt-${encodeURIComponent(a.app)}"></div>
+              </div>
+              <div class="app-drill" hidden></div>
+            `;
+            li.dataset.app = a.app;
+          } else {
+            existing.delete(a.app);
+          }
           li.dataset.appTotal = String(a.dur_seconds);
-          ul.appendChild(li);
+          li.querySelector(".app-dur").textContent = fmt(a.dur_seconds);
+          li.querySelector(".app-pct").textContent = pct + "%";
+          li.querySelector(".app-bar").style.width = (a.dur_seconds / max * 100).toFixed(1) + "%";
+          ul.appendChild(li);  // przesuwa na właściwą pozycję (sortowanie po czasie)
+        }
+        // appki, których już nie ma w tym dniu -> usuń wiersz i stan
+        for (const [goneApp, li] of existing) {
+          li.remove();
+          openDrills.delete(goneApp);
+        }
+        // Odśwież zawartość otwartych paneli (tylko gdy dane się zmieniły)
+        for (const app of [...openDrills]) {
+          const li = ul.querySelector(`li[data-app="${CSS.escape(app)}"]`);
+          const panel = li && li.querySelector(".app-drill");
+          if (!panel) { openDrills.delete(app); continue; }
+          loadEntitiesForApp(app)
+            .then(ents => {
+              const json = JSON.stringify(ents);
+              if (ents.length && !panel.hidden && panel._lastEnts !== json) {
+                panel._lastEnts = json;
+                renderDrill(panel, app, ents);
+              }
+            })
+            .catch(() => {});
         }
       } catch (e) { console.error(e); }
     }
@@ -657,6 +691,9 @@
 
     // --- Drilldown: semantyczne obiekty i zadania (klik w wiersz aplikacji) ---
     const entitiesCache = new Map();
+    // Stan rozwinięcia — przeżywa auto-odświeżanie listy aplikacji
+    const openDrills = new Set();      // nazwy appek z rozwiniętym panelem
+    const openVariants = new Set();    // "app::encja" z rozwiniętą listą wariantów
 
     async function loadEntitiesForApp(app) {
       const date = selectedDate;
@@ -718,12 +755,18 @@
         const btn = row.querySelector(".badge-var");
         const numVars = row.querySelectorAll(".drill-var-row").length;
         const defaultLabel = `${numVars} warianty ▾`;
+        const vKey = app + "::" + entities[Number(row.dataset.idx)].entity;
+        if (openVariants.has(vKey)) {
+          vlist.style.display = "block";
+          if (btn) btn.textContent = "zwiń ▴";
+        }
         main.addEventListener("click", (ev) => {
           if (ev.target.closest(".btn-mkrule")) return;
           ev.stopPropagation();
           const open = vlist.style.display !== "none";
           vlist.style.display = open ? "none" : "block";
           if (btn) btn.textContent = open ? defaultLabel : "zwiń ▴";
+          if (open) openVariants.delete(vKey); else openVariants.add(vKey);
         });
       });
 
@@ -896,6 +939,10 @@
     }
 
     function selectDay(dateISO) {
+      if (dateISO !== selectedDate) {
+        openDrills.clear();
+        openVariants.clear();
+      }
       selectedDate = dateISO;
       refreshAll();
     }
@@ -1426,8 +1473,9 @@
       const panel = li.querySelector(".app-drill");
       if (!panel) return;
       hideActiveTooltip();
-      if (!panel.hidden) { panel.hidden = true; return; }
+      if (!panel.hidden) { panel.hidden = true; openDrills.delete(app); return; }
       panel.hidden = false;
+      openDrills.add(app);
       panel.innerHTML = `<div class="drill-head"><span class="drill-title">Ładowanie obiektów dla ${escapeHtml(app)}…</span></div>`;
       try {
         const entities = await loadEntitiesForApp(app);
