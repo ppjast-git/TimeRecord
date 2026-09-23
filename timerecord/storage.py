@@ -34,6 +34,25 @@ CREATE INDEX IF NOT EXISTS idx_events_start ON events(ts_start);
 CREATE INDEX IF NOT EXISTS idx_events_end   ON events(ts_end);
 CREATE INDEX IF NOT EXISTS idx_events_app   ON events(app);
 CREATE INDEX IF NOT EXISTS idx_events_idle  ON events(idle);
+
+-- Reguły normalizacji (użytkownika) — zobacz timerecord/rules.py
+CREATE TABLE IF NOT EXISTS rules (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    enabled       INTEGER NOT NULL DEFAULT 1,
+    priority      INTEGER NOT NULL DEFAULT 100,   -- niższy = wcześniej
+    app_match     TEXT NOT NULL DEFAULT '',       -- substring w nazwie app; '' = wszystkie
+    match_type    TEXT NOT NULL DEFAULT 'regex',  -- 'regex' | 'contains'
+    pattern       TEXT NOT NULL,
+    entity_tmpl   TEXT NOT NULL DEFAULT '{0}',    -- {0}=tytuł/match, {n}=grupa regex
+    category      TEXT NOT NULL DEFAULT 'Inne',
+    project_mode  TEXT NOT NULL DEFAULT 'inherit',-- inherit|none|fixed|group
+    project       TEXT,                           -- nazwa dla project_mode='fixed'
+    project_group INTEGER,                        -- nr grupy dla 'group'/deklaracji
+    is_decl       INTEGER NOT NULL DEFAULT 0,     -- 1 = reguła deklaruje projekt
+    detail_group  INTEGER,                        -- nr grupy -> detail; NULL = raw
+    note          TEXT,
+    created_at    TEXT NOT NULL
+);
 """
 
 
@@ -56,6 +75,31 @@ class Storage:
         with self._cursor() as (conn, cur):
             cur.executescript(SCHEMA)
             conn.commit()
+        self._seed_rules()
+
+    def _seed_rules(self) -> None:
+        """Importuj reguły z rules_seed.json w DATA_DIR gdy tabela rules jest pusta.
+
+        Plik seed jest lokalny (poza repo) — użytkownik może tam trzymać
+        swoje prywatne paczki reguł, np. branżowe.
+        """
+        import json as _json
+        seed = DATA_DIR / "rules_seed.json"
+        with self._cursor() as (_, cur):
+            n = cur.execute("SELECT COUNT(*) AS c FROM rules").fetchone()["c"]
+        if n > 0 or not seed.exists():
+            return
+        try:
+            data = _json.loads(seed.read_text(encoding="utf-8"))
+            if isinstance(data, list):
+                imported = self.import_rules(data)
+                if imported:
+                    import logging
+                    logging.getLogger(__name__).info(
+                        "zaimportowano %d reguł z %s", imported, seed)
+        except Exception:
+            import logging
+            logging.getLogger(__name__).exception("seed reguł nie powiódł się")
 
     # --- connection management ------------------------------------------------
     def _connect(self) -> sqlite3.Connection:
@@ -134,6 +178,90 @@ class Storage:
                 (ts_iso,),
             )
             conn.commit()
+
+    # --- reguły normalizacji (CRUD) ------------------------------------------
+    def _row_to_rule(self, r: sqlite3.Row):
+        from .rules import Rule
+        return Rule(
+            id=r["id"], enabled=bool(r["enabled"]), priority=r["priority"],
+            app_match=r["app_match"] or "", match_type=r["match_type"],
+            pattern=r["pattern"], entity_tmpl=r["entity_tmpl"],
+            category=r["category"], project_mode=r["project_mode"],
+            project=r["project"], project_group=r["project_group"],
+            is_decl=bool(r["is_decl"]), detail_group=r["detail_group"],
+            builtin=False,
+        )
+
+    def list_rules(self) -> list:
+        """Wszystkie reguły użytkownika (włącznie z disabled), posortowane."""
+        with self._cursor() as (_, cur):
+            rows = cur.execute(
+                "SELECT * FROM rules ORDER BY priority ASC, id ASC"
+            ).fetchall()
+        return [self._row_to_rule(r) for r in rows]
+
+    def rules_enabled(self) -> list:
+        """Aktywne reguły użytkownika — do silnika normalizacji."""
+        return [r for r in self.list_rules() if r.enabled]
+
+    def add_rule(self, rule) -> int:
+        """Dodaj regułę. Zwraca id."""
+        with self._cursor() as (conn, cur):
+            cur.execute(
+                """INSERT INTO rules
+                   (enabled, priority, app_match, match_type, pattern,
+                    entity_tmpl, category, project_mode, project, project_group,
+                    is_decl, detail_group, note, created_at)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (int(rule.enabled), rule.priority, rule.app_match, rule.match_type,
+                 rule.pattern, rule.entity_tmpl, rule.category, rule.project_mode,
+                 rule.project, rule.project_group, int(rule.is_decl),
+                 rule.detail_group, getattr(rule, "note", None), utcnow_iso()),
+            )
+            conn.commit()
+            return cur.lastrowid
+
+    def update_rule(self, rule_id: int, **fields) -> bool:
+        """Aktualizuj wybrane pola reguły. Zwraca True gdy reguła istniała."""
+        allowed = {"enabled", "priority", "app_match", "match_type", "pattern",
+                   "entity_tmpl", "category", "project_mode", "project",
+                   "project_group", "is_decl", "detail_group", "note"}
+        sets, params = [], []
+        for k, v in fields.items():
+            if k not in allowed:
+                continue
+            sets.append(f"{k}=?")
+            if k in ("enabled", "is_decl"):
+                v = int(bool(v))
+            params.append(v)
+        if not sets:
+            return False
+        params.append(rule_id)
+        with self._cursor() as (conn, cur):
+            cur.execute(f"UPDATE rules SET {', '.join(sets)} WHERE id=?", params)
+            conn.commit()
+            return cur.rowcount > 0
+
+    def delete_rule(self, rule_id: int) -> bool:
+        with self._cursor() as (conn, cur):
+            cur.execute("DELETE FROM rules WHERE id=?", (rule_id,))
+            conn.commit()
+            return cur.rowcount > 0
+
+    def import_rules(self, rules: list) -> int:
+        """Importuj listę reguł (Rule lub dict). Zwraca liczbę dodanych."""
+        from .rules import Rule
+        n = 0
+        for r in rules:
+            if isinstance(r, dict):
+                r = Rule(**{k: v for k, v in r.items()
+                            if k in {"pattern", "enabled", "priority", "app_match",
+                                     "match_type", "entity_tmpl", "category",
+                                     "project_mode", "project", "project_group",
+                                     "is_decl", "detail_group", "note"}})
+            self.add_rule(r)
+            n += 1
+        return n
 
     # --- zapytania do dashboardu ---------------------------------------------
     def _day_bounds_utc(self, d: datetime) -> tuple[datetime, datetime]:
@@ -216,10 +344,25 @@ class Storage:
         app: str,
         limit: int = 8,
     ) -> list[dict]:
-        """Zwraca top tytułów (lub tabów) dla dnia i aplikacji.
+        """Zwraca top encji/obiektów dla dnia i aplikacji (do szybkiego podglądu w tooltipie)."""
+        ents = self.entities_for_day(day=day, app=app, limit=limit)
+        return [
+            {
+                "key": e["entity"],
+                "category": e["category"],
+                "project": e["project"],
+                "dur_seconds": e["dur_seconds"],
+                "n_events": e["n_events"],
+                "n_variants": e["n_variants"],
+            }
+            for e in ents
+        ]
 
-        Agregacja: preferujemy `tab` (zakładka), a gdy brak to `title`.
-        Zdarzenia z idle=1 są pomijane (pokazujemy aktywny czas).
+    def all_titles_for_day(self, day: Optional[datetime] = None) -> list[dict]:
+        """Wszystkie zagregowane tytuły (tab/title) per aplikacja dla danego dnia.
+
+        Jak top_titles_for_day_and_app, ale bez limitu i dla wszystkich aplikacji
+        naraz (jedno zapytanie, GROUP BY app + klucz).
         """
         day = day or datetime.now().astimezone()
         start_utc, end_utc = self._day_bounds_utc(day)
@@ -229,6 +372,7 @@ class Storage:
             rows = cur.execute(
                 """
                 SELECT
+                  app,
                   COALESCE(NULLIF(tab, ''), title) AS key,
                   SUM(
                     (julianday(MIN(ts_end, ?)) - julianday(MAX(ts_start, ?))) * 86400.0
@@ -236,23 +380,200 @@ class Storage:
                   COUNT(*) AS n_events
                 FROM events
                 WHERE ts_end > ? AND ts_start < ?
-                  AND app = ?
                   AND idle = 0
                   AND COALESCE(NULLIF(tab, ''), title) IS NOT NULL
-                GROUP BY key
-                ORDER BY dur_seconds DESC
-                LIMIT ?
+                GROUP BY app, key
+                ORDER BY app ASC, dur_seconds DESC
                 """,
-                (e_iso, s_iso, s_iso, e_iso, app, limit),
+                (e_iso, s_iso, s_iso, e_iso),
             ).fetchall()
-
         return [
             {
+                "app": r["app"],
                 "key": r["key"],
                 "dur_seconds": round(r["dur_seconds"] or 0, 1),
                 "n_events": r["n_events"],
             }
             for r in rows
+        ]
+
+    # --- semantyczna agregacja encji i projektów ----------------------------
+    def entities_for_day(
+        self,
+        day: Optional[datetime] = None,
+        app: Optional[str] = None,
+        limit: int = 100,
+    ) -> list[dict]:
+        """Zwraca obiekty biznesowe z agregacją wariantów.
+
+        Używa silnika reguł (reguły użytkownika z DB + presety wbudowane),
+        potem generycznego fallbacku z `timerecord.normalizer`.
+        Suma czasów encji dla aplikacji == czas całkowity aplikacji.
+        """
+        from .rules import make_engine
+        from .normalizer import normalize_title
+
+        engine = make_engine(self.rules_enabled())
+
+        day = day or datetime.now().astimezone()
+        start_utc, end_utc = self._day_bounds_utc(day)
+        s_iso = start_utc.isoformat(timespec="seconds")
+        e_iso = end_utc.isoformat(timespec="seconds")
+
+        # Stan aktywnego projektu per app sprzed początku dnia (Koncepcja A):
+        # skanujemy ostatnie zdarzenia sprzed dnia i przepuszczamy przez
+        # reguły deklarujące projekt.
+        active_project: dict[str, str] = {}
+        with self._cursor() as (_, cur):
+            prior_rows = cur.execute(
+                """SELECT app, title, tab FROM events
+                   WHERE ts_start <= ? AND idle = 0
+                   ORDER BY ts_start DESC LIMIT 200""",
+                (s_iso,),
+            ).fetchall()
+            for pr in prior_rows:
+                p_app = pr["app"]
+                if p_app not in active_project:
+                    decl = engine.detect_project(p_app, pr["title"], pr["tab"])
+                    if decl:
+                        active_project[p_app] = decl
+
+            query = """
+                SELECT app, title, tab,
+                       (julianday(MIN(ts_end, ?)) - julianday(MAX(ts_start, ?))) * 86400.0 AS dur
+                FROM events
+                WHERE ts_end > ? AND ts_start < ?
+                  AND idle = 0
+            """
+            params = [e_iso, s_iso, s_iso, e_iso]
+            if app:
+                query += " AND app = ?"
+                params.append(app)
+            query += " ORDER BY ts_start ASC"
+            rows = cur.execute(query, params).fetchall()
+
+        groups: dict[tuple[str, str], dict] = {}
+        for r in rows:
+            dur = r["dur"] or 0.0
+            r_app = r["app"]
+            decl = engine.detect_project(r_app, r["title"], r["tab"])
+            if decl:
+                active_project[r_app] = decl
+
+            curr_proj = active_project.get(r_app)
+            norm = engine.apply(r_app, r["title"], r["tab"], active_project=curr_proj)
+            if norm is None:
+                norm = normalize_title(r_app, r["title"], r["tab"], active_project=curr_proj)
+            gk = (r_app, norm.entity)
+            if gk not in groups:
+                groups[gk] = {
+                    "app": r_app,
+                    "entity": norm.entity,
+                    "category": norm.category,
+                    "project": norm.project,
+                    "dur_seconds": 0.0,
+                    "n_events": 0,
+                    "variants": {},
+                }
+            g = groups[gk]
+            g["dur_seconds"] += dur
+            g["n_events"] += 1
+            raw_key = (r["tab"] or r["title"] or "").strip() or norm.entity
+            v = g["variants"].setdefault(raw_key, {"title": raw_key, "dur_seconds": 0.0, "n_events": 0})
+            v["dur_seconds"] += dur
+            v["n_events"] += 1
+
+        out = []
+        for g in groups.values():
+            var_list = sorted(g["variants"].values(), key=lambda x: x["dur_seconds"], reverse=True)
+            out.append({
+                "app": g["app"],
+                "entity": g["entity"],
+                "category": g["category"],
+                "project": g["project"],
+                "dur_seconds": round(g["dur_seconds"], 1),
+                "n_events": g["n_events"],
+                "n_variants": len(var_list),
+                "variants": [
+                    {
+                        "title": v["title"],
+                        "dur_seconds": round(v["dur_seconds"], 1),
+                        "n_events": v["n_events"],
+                    }
+                    for v in var_list
+                ],
+            })
+
+        out.sort(key=lambda x: x["dur_seconds"], reverse=True)
+        return out[:limit]
+
+    def unclassified_for_day(self, day: Optional[datetime] = None,
+                             limit: int = 30) -> list[dict]:
+        """Top encje z kategorii "Inne"/"Ogólne" — kandydaci do reguł użytkownika.
+
+        Zwraca wiersze z `suggestion`: propozycja app_match + przykładowy tytuł.
+        """
+        ents = self.entities_for_day(day=day, limit=500)
+        out = []
+        for e in ents:
+            if e["category"] not in ("Inne", "Ogólne"):
+                continue
+            top_variant = e["variants"][0]["title"] if e.get("variants") else e["entity"]
+            out.append({
+                "app": e["app"],
+                "entity": e["entity"],
+                "dur_seconds": e["dur_seconds"],
+                "n_events": e["n_events"],
+                "n_variants": e["n_variants"],
+                "sample_title": top_variant,
+            })
+            if len(out) >= limit:
+                break
+        return out
+
+    def projects_for_day(self, day: Optional[datetime] = None) -> list[dict]:
+        """Zwraca zagregowany czas per projekt (przenikający różne aplikacje)."""
+        all_entities = self.entities_for_day(day=day, limit=500)
+        proj_map: dict[str, dict] = {}
+        for e in all_entities:
+            p = e.get("project")
+            if not p:
+                continue
+            if p not in proj_map:
+                proj_map[p] = {
+                    "project": p,
+                    "dur_seconds": 0.0,
+                    "n_events": 0,
+                    "apps": set(),
+                    "entities": {},
+                }
+            slot = proj_map[p]
+            slot["dur_seconds"] += e["dur_seconds"]
+            slot["n_events"] += e["n_events"]
+            slot["apps"].add(e["app"])
+            slot["entities"][e["entity"]] = slot["entities"].get(e["entity"], 0.0) + e["dur_seconds"]
+
+        out = []
+        for p, d in proj_map.items():
+            top_ents = sorted(d["entities"].items(), key=lambda x: x[1], reverse=True)[:5]
+            out.append({
+                "project": p,
+                "dur_seconds": round(d["dur_seconds"], 1),
+                "n_events": d["n_events"],
+                "apps": sorted(list(d["apps"])),
+                "top_entities": [{"entity": k, "dur_seconds": round(v, 1)} for k, v in top_ents],
+            })
+        out.sort(key=lambda x: x["dur_seconds"], reverse=True)
+        return out
+
+    def month_summary(self, year: int, month: int) -> list[dict]:
+        """Sumy dobowe dla każdego dnia danego miesiąca (do widoku kalendarza)."""
+        import calendar as _cal
+
+        n_days = _cal.monthrange(year, month)[1]
+        return [
+            self.daily_summary(datetime(year, month, dd).astimezone())
+            for dd in range(1, n_days + 1)
         ]
 
     def week_summary(self, today: Optional[datetime] = None) -> list:
