@@ -12,12 +12,37 @@ SQLite — nic nie jest wysyłane do chmury ani żadnego serwera.**
 
 - **Automatyczne śledzenie** — próbkowanie aktywnego okna co 5 s (nazwa procesu, tytuł, zakładka przeglądarki)
 - **Detekcja AFK** — idle powyżej 3 min oznaczane osobno, nie wlicza się do czasu pracy
-- **Dashboard webowy** — podsumowanie dzienne, per-aplikacja, ostatnie zdarzenia, aktualna próbka
+- **Reguły klasyfikacji** — normalizacja tytułów w sensowne **obiekty i zadania** z kategoriami i projektami; własne reguły + wbudowane presety
+- **Asystent reguł** — analizuje tytuły aplikacji i proponuje gotowe grupowania („57 tytułów zawiera «X» — zgrupuj po wartości"), bez pisania regexów
+- **Dashboard webowy** — podsumowanie dzienne, per-aplikacja, drilldown obiektów, projekty, kalendarz, ostatnie zdarzenia
+- **Eksport XLSX** — raport wybranego dnia jednym kliknięciem (aplikacje, zdarzenia, obiekty, projekty)
 - **REST API** — wszystkie dane dostępne przez HTTP na localhost (dla integracji/eksportu)
 - **Ikona w trayu** — tooltip z dzisiejszym czasem pracy, pauza/wznowienie, dashboard
 - **Autostart z systemem** — uruchamia się automatycznie po logowaniu
 - **Auto-aktualizacja** — sprawdza GitHub Releases, cichy upgrade z menu traya
 - **Prywatność** — dane wyłącznie lokalne (SQLite), brak telemetrii, brak konta
+
+## Reguły klasyfikacji
+
+Surowe tytuły okien są normalizowane **przy odczycie** (nie przy zapisie) —
+zmiana reguły przelicza także dane historyczne.
+
+- **Encja** — semantyczny obiekt wyciągnięty z tytułu (np. `Dokument T12345`
+  zamiast `GeoApp - Item T0930783, Statistics [Filter ON ...]`)
+- **Kategoria** — grupa encji (np. „Dokumenty", „Poczta", „Programowanie")
+- **Projekt** — reguły-deklaracje wykrywają aktywny projekt aplikacji
+  (np. nazwa pliku/projektu z tytułu), inne encje dziedziczą go
+
+Wszystko zarządzane z dashboardu → **⚙ Ustawienia**:
+
+- **Asystent** — wybierasz aplikację, system analizuje jej tytuły z ostatnich
+  dni i proponuje gotowe reguły w języku naturalnym; klikasz „Użyj" i gotowe
+- **Edytor** — pełna kontrola (regex/contains, szablon encji `{1}`…`{9}`,
+  kategoria, projekt), z podglądem na żywo i testem pokrycia na danych dnia
+- **Zarządzanie zbiorcze** — eksport/import reguł jako JSON, wyczyść
+  z automatyczną archiwizacją
+- **Presety wbudowane** — 24 generyczne reguły (przeglądarki, edytory,
+  Office, dialogi plików, multimedia, komunikatory)
 
 ## Wymagania
 
@@ -52,8 +77,19 @@ Dashboard dostępny na `http://127.0.0.1:7231/`. Endpointy:
 | `GET /`                   | Dashboard HTML                         |
 | `GET /api/today`          | Suma dzisiaj + per-app                 |
 | `GET /api/day/YYYY-MM-DD` | Suma dla wskazanego dnia               |
+| `GET /api/day/…/app/X/entities` | Obiekty/zadania aplikacji (po regułach) |
+| `GET /api/day/…/app/X/top-titles` | Top tytuły aplikacji              |
+| `GET /api/day/…/projects` | Wykryte projekty dnia                     |
+| `GET /api/day/…/export.xlsx` | Eksport dnia do XLSX                   |
 | `GET /api/week`           | Ostatnie 7 dni                         |
+| `GET /api/month/YYYY/M`   | Kalendarz miesiąca                       |
 | `GET /api/events?date=`   | Ostatnie zdarzenia dnia                |
+| `GET /api/suggestions`    | Nieklasyfikowane encje (kandydaci)     |
+| `GET/POST/PUT/DELETE /api/rules` | CRUD reguł użytkownika         |
+| `POST /api/rules/test`    | Podgląd draftu reguły vs tytuł         |
+| `POST /api/rules/test-coverage` | Pokrycie reguły na danych dnia   |
+| `POST /api/rules/suggest` | Asystent — propozycje reguł dla appki  |
+| `GET /api/rules/export` `POST /api/rules/import` `POST /api/rules/clear` | Backup/import/reset reguł |
 | `GET /api/now`            | Aktualna próbka + stan pauzy           |
 | `POST /api/pause`         | Pauza collectora                       |
 | `POST /api/resume`        | Wznowienie collectora                  |
@@ -81,6 +117,7 @@ Jeden proces Pythona, trzy warstwy:
 
 - **Collector** — co 5 s pobiera aktywne okno przez `win32gui.GetForegroundWindow`, nazwę procesu przez `psutil`, idle przez `GetLastInputInfo`. Parsuje tytuł okna przeglądarki → tytuł zakładki.
 - **Storage** — SQLite z **heartbeat-merge**: sąsiadujące próbki o tych samych danych i przerwie ≤ 15 s są łączone w jedno zdarzenie. Inspiracja: [ActivityWatch](https://github.com/ActivityWatch/activitywatch).
+- **RuleEngine** (`rules.py`) — przy odczycie normalizuje surowe tytuły w encje/kategorie/projekty: reguły użytkownika z DB → presety wbudowane → generyczny fallback.
 - **Webapp** — FastAPI serwuje dashboard HTML + REST API na `127.0.0.1:7231`.
 - **Tray** — `pystray` ikona z menu: *Otwórz dashboard*, *Pauza/Wznów*, *Sprawdź aktualizacje*, *Wyjdź*.
 
@@ -109,9 +146,13 @@ Edytuj `timerecord/config.py` (`Settings`):
 
 ```sql
 events(id, ts_start, ts_end, app, exe, title, tab, browser, host, idle)
+rules(id, enabled, priority, app_match, match_type, pattern,
+      entity_tmpl, category, project_mode, project, project_group,
+      is_decl, detail_group, note)
 ```
 
 `ts_start`/`ts_end` w UTC (ISO8601). `idle=1` oznacza okres nieaktywności.
+Reguły wbudowane nie są w DB — mieszkają w kodzie (`timerecord/rules.py`).
 
 ## Development
 
@@ -157,8 +198,10 @@ git push origin vX.Y.Z
 
 ## Roadmap
 
+- [x] reguły klasyfikacji: kategorie, encje, projekty (v0.3.0)
+- [x] asystent reguł — auto-propozycje grupowania tytułów (v0.3.0)
+- [x] eksport XLSX (v0.3.0)
 - [ ] rozszerzenie przeglądarki → dokładny URL (jak `aw-watcher-web`)
-- [ ] kategorie/reguły dla aplikacji (praca/prywatne)
 - [ ] wykresy godzinowe, heatmapa aktywności
 - [ ] eksport CSV/JSON
 - [ ] notyfikacje po N godzin pracy
