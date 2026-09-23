@@ -108,6 +108,7 @@
       margin-bottom: 6px;
       font-weight: 500;
     }
+    .tooltip .tt-section { margin-top: 10px; }
     .tooltip .tt-row {
       display: grid;
       grid-template-columns: 1fr auto;
@@ -132,13 +133,34 @@
     .week-row {
       display: grid; grid-template-columns: 90px 1fr 70px; gap: 10px; align-items: center;
       padding: 8px 0; border-bottom: 1px solid var(--border);
+      cursor: pointer; border-radius: 6px;
     }
     .week-row:last-child { border-bottom: none; }
+    .week-row:hover .week-day { color: var(--text); }
+    .week-row.selected .week-day { color: var(--accent); }
+    .week-row.selected .week-bar { background: var(--accent); }
     .week-bar-wrap { height: 8px; background: var(--card-2); border-radius: 4px; overflow: hidden; }
     .week-bar { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-2)); border-radius: 4px; }
     .week-day { font-size: 13px; color: var(--muted); }
     .week-day.today { color: var(--text); font-weight: 600; }
     .week-dur { font-variant-numeric: tabular-nums; font-size: 13px; text-align: right; }
+
+    .calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-top: 10px; }
+    .cal-head { text-align: center; font-size: 11px; color: var(--muted); padding: 4px 0; }
+    .cal-cell {
+      height: 30px; border-radius: 6px; background: var(--card-2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums;
+    }
+    .cal-cell.has-data { cursor: pointer; color: var(--text); }
+    .cal-cell.has-data:hover { outline: 1px solid var(--accent); }
+    .cal-cell.other { background: transparent; }
+    .cal-cell.future { opacity: .35; }
+    .cal-cell.today { box-shadow: inset 0 0 0 1px var(--muted); }
+    .cal-cell.selected { box-shadow: inset 0 0 0 2px var(--accent); color: var(--accent); }
+    .cal-nav { display: flex; align-items: center; gap: 6px; }
+    .cal-label { text-transform: none !important; letter-spacing: 0 !important; color: var(--text); font-size: 13px; }
+    button.btn.mini { padding: 2px 10px; font-size: 12px; line-height: 1.2; }
 
     .events { font-size: 13px; }
     .events table { width: 100%; border-collapse: collapse; }
@@ -163,6 +185,134 @@
     .empty { color: var(--muted); font-size: 13px; padding: 16px 0; }
     a { color: var(--accent); }
     footer { color: var(--muted); font-size: 12px; text-align: center; padding: 24px; }
+
+    .app-main { display: contents; cursor: pointer; }
+    .app-drill {
+      grid-column: 1 / -1;
+      margin: 8px 0 10px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+      background: var(--card-2);
+    }
+    .drill-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; flex-wrap: wrap; gap: 8px; }
+    .drill-title { color: var(--text); font-size: 13px; font-weight: 600; }
+    .drill-hint { color: var(--muted); font-size: 11px; }
+    .drill-entity-row {
+      border-top: 1px solid var(--border);
+      padding: 7px 0;
+    }
+    .drill-entity-row:first-of-type { border-top: none; }
+    .drill-entity-main {
+      display: grid; grid-template-columns: 1fr auto auto auto; gap: 12px;
+      font-size: 13px; align-items: baseline; cursor: pointer;
+    }
+    .drill-key { word-break: break-word; color: var(--text); display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+    .drill-badge {
+      background: rgba(79, 156, 249, 0.15); color: var(--accent);
+      padding: 1px 6px; border-radius: 4px; font-size: 11px; font-weight: 500;
+    }
+    .drill-proj {
+      background: rgba(110, 231, 183, 0.15); color: var(--accent-2);
+      padding: 1px 6px; border-radius: 4px; font-size: 11px; font-weight: 500;
+    }
+    .drill-name { font-weight: 500; }
+    .drill-dur { font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 500; text-align: right; }
+    .drill-num { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; font-size: 12px; }
+    .badge-var {
+      background: var(--card); border: 1px solid var(--border);
+      padding: 2px 7px; border-radius: 10px; font-size: 11px;
+      color: var(--muted); transition: border-color .2s;
+    }
+    .badge-var:hover { border-color: var(--accent); color: var(--text); }
+    .drill-variants-list {
+      margin: 6px 0 2px 14px;
+      padding-left: 10px;
+      border-left: 2px solid var(--border);
+    }
+    .drill-var-row {
+      display: grid; grid-template-columns: 1fr auto auto; gap: 10px;
+      font-size: 12px; color: var(--muted); padding: 3px 0;
+    }
+    .drill-var-row .var-title { word-break: break-word; }
+
+    .proj-row {
+      display: grid; grid-template-columns: 180px 1fr 80px; gap: 12px; align-items: center;
+      padding: 9px 0; border-bottom: 1px solid var(--border);
+    }
+    .proj-row:last-child { border-bottom: none; }
+    .proj-name { font-size: 14px; font-weight: 600; color: var(--accent-2); display: flex; align-items: center; gap: 6px; }
+    .proj-bar-wrap { height: 7px; background: var(--card-2); border-radius: 4px; overflow: hidden; }
+    .proj-bar { height: 100%; background: linear-gradient(90deg, var(--accent-2), var(--accent)); border-radius: 4px; }
+    .proj-dur { font-variant-numeric: tabular-nums; font-size: 13px; text-align: right; }
+    .proj-apps { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    /* --- Reguły --- */
+    .rule-row {
+      display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: start;
+      padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px;
+    }
+    .rule-row:last-child { border-bottom: none; }
+    .rule-row.disabled { opacity: .45; }
+    .rule-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+    .rule-cat { color: var(--accent); font-size: 11px; }
+    .rule-app { color: var(--muted); font-size: 11px; }
+    .rule-entity { font-weight: 500; }
+    .rule-pat { font-family: ui-monospace, Consolas, monospace; font-size: 11px; color: var(--muted); word-break: break-all; margin-top: 2px; }
+    .rule-actions { display: flex; gap: 6px; }
+    .rule-actions button { padding: 2px 8px; font-size: 11px; }
+    .builtin-label { color: var(--muted); font-size: 11px; font-style: italic; }
+    .chip {
+      display: inline-block; padding: 1px 8px; border-radius: 10px;
+      background: var(--card-2); border: 1px solid var(--border);
+      font-family: ui-monospace, Consolas, monospace;
+    }
+
+    .sugg-row {
+      display: grid; grid-template-columns: 1fr auto auto auto; gap: 10px; align-items: center;
+      padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 13px;
+    }
+    .sugg-row:last-child { border-bottom: none; }
+    .sugg-app { color: var(--muted); font-size: 12px; }
+    .sugg-entity { word-break: break-word; }
+    .sugg-dur { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 12px; }
+
+    /* --- modal edytora reguł --- */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.6);
+      display: none; align-items: center; justify-content: center; z-index: 50;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+      width: 620px; max-width: 95vw; max-height: 92vh; overflow-y: auto;
+      padding: 20px 22px;
+    }
+    .modal h3 { margin: 0 0 12px; font-size: 15px; }
+    .form-grid { display: grid; grid-template-columns: 130px 1fr; gap: 10px 12px; align-items: center; font-size: 13px; }
+    .form-grid label { color: var(--muted); font-size: 12px; }
+    .form-grid input[type=text], .form-grid select, .form-grid textarea {
+      background: var(--card-2); border: 1px solid var(--border); color: var(--text);
+      border-radius: 6px; padding: 6px 9px; font-size: 13px; font-family: inherit;
+      width: 100%;
+    }
+    .form-grid input[type=text]:focus, .form-grid select:focus, .form-grid textarea:focus {
+      outline: none; border-color: var(--accent);
+    }
+    .form-grid textarea { font-family: ui-monospace, Consolas, monospace; font-size: 12px; resize: vertical; }
+    .form-grid .hint { color: var(--muted); font-size: 11px; grid-column: 2; margin-top: -6px; }
+    .preview-box {
+      margin-top: 14px; border: 1px dashed var(--border); border-radius: 10px; padding: 12px;
+      background: var(--card-2); font-size: 13px;
+    }
+    .preview-box .pv-title { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 8px; }
+    .pv-input { display: grid; grid-template-columns: 90px 1fr; gap: 8px; margin-bottom: 8px; align-items: center; }
+    .pv-input input { background: var(--card); border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 5px 8px; font-size: 12px; }
+    .pv-result { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+    .pv-result .ok { color: var(--accent-2); }
+    .pv-result .miss { color: var(--warn); }
+    .pv-result code { background: var(--card); padding: 1px 6px; border-radius: 4px; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
   </style>
 </head>
 <body>
@@ -197,11 +347,55 @@
       <div id="week" style="margin-top: 10px;"></div>
     </div>
 
+    <div class="card" style="margin-bottom: 24px;">
+      <h2 style="display: flex; align-items: center; justify-content: space-between;">
+        <span>Kalendarz</span>
+        <span class="cal-nav">
+          <button class="btn mini" id="cal-prev" title="Poprzedni miesiąc">‹</button>
+          <span class="cal-label" id="cal-label">—</span>
+          <button class="btn mini" id="cal-next" title="Następny miesiąc">›</button>
+        </span>
+      </h2>
+      <div id="calendar" class="calendar"></div>
+    </div>
+
+    <div class="card" id="projects-card" style="margin-bottom: 24px; display: none;">
+      <h2 style="display: flex; align-items: center; justify-content: space-between;">
+        <span>Wykryte projekty — <span id="proj-day-label">dziś</span></span>
+        <span style="font-size: 11px; text-transform: none; color: var(--muted);">agregacja między programami</span>
+      </h2>
+      <div id="projects-list" style="margin-top: 10px;"></div>
+    </div>
+
+    <div class="card" id="rules-card" style="margin-bottom: 24px;">
+      <h2 style="display: flex; align-items: center; justify-content: space-between;">
+        <span>Reguły klasyfikacji</span>
+        <span style="display:flex; gap:6px;">
+          <button class="btn mini" id="btn-rules-export" title="Pobierz wszystkie reguły jako JSON">⬇ eksport</button>
+          <button class="btn mini" id="btn-rules-import" title="Wczytaj reguły z pliku JSON">⬆ import</button>
+          <button class="btn mini" id="btn-rules-clear" title="Wyzeruj reguły (archiwizacja do %LOCALAPPDATA%\TimeRecord)">🗑 wyczyść</button>
+          <button class="btn mini" id="btn-rules-assist" title="Automatyczne propozycje reguł na podstawie tytułów okien">✨ asystent</button>
+          <button class="btn mini" id="btn-new-rule">+ Nowa reguła</button>
+        </span>
+      </h2>
+      <input type="file" id="rules-import-file" accept=".json" style="display:none;">
+      <div id="rules-list" style="margin-top: 10px;"></div>
+      <div id="builtin-toggle" style="margin-top: 10px;">
+        <a href="#" id="show-builtin" style="font-size: 12px;">pokaż reguły wbudowane…</a>
+        <div id="builtin-list" style="display: none; margin-top: 8px;"></div>
+      </div>
+      <div id="sugg-wrap" style="margin-top: 14px; display: none;">
+        <h2 style="margin-bottom: 6px;">Nieklasyfikowane — kandydaci na reguły</h2>
+        <div id="sugg-list"></div>
+      </div>
+    </div>
+
     <div class="section-title">
       <h3>Aplikacje — <span id="day-label">dziś</span></h3>
       <div class="tabs">
         <div class="tab active" data-day="today">Dziś</div>
         <div class="tab" data-day="yesterday">Wczoraj</div>
+        <button class="btn" id="btn-export" title="Eksportuj wybrany dzień do XLSX">⬇ XLSX</button>
       </div>
     </div>
     <div class="card">
@@ -210,7 +404,7 @@
 
     <div class="section-title">
       <h3>Ostatnie zdarzenia</h3>
-      <span class="hint">najnowsze na górze</span>
+      <span class="hint" id="events-hint">najnowsze na górze</span>
     </div>
     <div class="card events">
       <table>
@@ -222,11 +416,114 @@
     </div>
   </main>
 
+  <div class="modal-overlay" id="rule-modal">
+    <div class="modal">
+      <h3 id="rule-modal-title">Nowa reguła</h3>
+      <div class="form-grid">
+        <label>Aplikacja</label>
+        <input type="text" id="r-app" list="apps-datalist" placeholder="np. chrome, code, soffice (puste = wszystkie)">
+        <datalist id="apps-datalist"></datalist>
+        <div class="hint">substring nazwy .exe; kilka przez "|" np. chrome|edge</div>
+
+        <label>Dopasowanie</label>
+        <select id="r-match-type">
+          <option value="regex">regex</option>
+          <option value="contains">zawiera tekst</option>
+        </select>
+
+        <label>Wzorzec</label>
+        <textarea id="r-pattern" rows="2" placeholder="np. Line\s*:?\s*([A-Za-z0-9-]+)"></textarea>
+        <div class="hint">regex (case-insensitive) albo tekst dla "zawiera"</div>
+
+        <label>Encja</label>
+        <input type="text" id="r-entity" placeholder="np. Dokument {1}" value="{0}">
+        <div class="hint">{0}=cały tytuł, {1},{2}…=grupy regex</div>
+
+        <label>Kategoria</label>
+        <input type="text" id="r-category" list="cats-datalist" value="Inne">
+        <datalist id="cats-datalist"></datalist>
+
+        <label>Projekt</label>
+        <select id="r-project-mode">
+          <option value="inherit">dziedzicz aktywny</option>
+          <option value="none">brak</option>
+          <option value="fixed">stała nazwa</option>
+          <option value="group">grupa regex</option>
+        </select>
+
+        <label id="r-project-label" style="display:none;">Nazwa projektu</label>
+        <input type="text" id="r-project" style="display:none;" placeholder="np. ProjektX">
+
+        <label id="r-pgroup-label" style="display:none;">Nr grupy → projekt</label>
+        <input type="text" id="r-pgroup" style="display:none;" placeholder="np. 1" inputmode="numeric">
+
+        <label>Deklaracja</label>
+        <label style="font-weight:normal;color:var(--text);font-size:13px;">
+          <input type="checkbox" id="r-is-decl"> reguła deklaruje aktywny projekt (nie produkuje encji)
+        </label>
+
+        <label>Notatka</label>
+        <input type="text" id="r-note" placeholder="opcjonalnie">
+      </div>
+
+      <div class="preview-box">
+        <div class="pv-title">Podgląd na żywo</div>
+        <div class="pv-input">
+          <label style="color:var(--muted);font-size:11px;">Aplikacja</label>
+          <input type="text" id="pv-app" placeholder="np. chrome.exe">
+        </div>
+        <div class="pv-input">
+          <label style="color:var(--muted);font-size:11px;">Tytuł okna</label>
+          <input type="text" id="pv-title" placeholder="wklej przykładowy tytuł okna">
+        </div>
+        <div class="pv-result" id="pv-result"><span style="color:var(--muted);">wpisz tytuł, by zobaczyć wynik</span></div>
+      </div>
+
+      <div class="preview-box" style="margin-top: 10px;">
+        <div class="pv-title">Pokrycie na danych z dnia</div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button class="btn" id="rule-test-day">Testuj na całym dniu</button>
+          <span id="cov-summary" style="color:var(--muted);font-size:12px;"></span>
+        </div>
+        <div id="cov-list" style="margin-top:8px;max-height:160px;overflow-y:auto;font-size:12px;"></div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn" id="rule-cancel">Anuluj</button>
+        <button class="btn primary" id="rule-save">Zapisz</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="assist-modal">
+    <div class="modal" style="max-width: 760px;">
+      <h3>✨ Asystent reguł</h3>
+      <p style="color:var(--muted);font-size:13px;margin:0 0 12px;">
+        Wybierz aplikację — znajdę powtarzalne fragmenty w jej tytułach okien
+        i zaproponuję grupowanie. Bez pisania regexów.
+      </p>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;">
+        <input type="text" id="a-app" list="apps-datalist" placeholder="aplikacja, np. chrome, code" style="flex:1;">
+        <select id="a-days" title="z ilu dni analizować tytuły">
+          <option value="7">7 dni</option>
+          <option value="30" selected>30 dni</option>
+          <option value="90">90 dni</option>
+        </select>
+        <button class="btn primary" id="a-analyze">Analizuj</button>
+      </div>
+      <div id="a-summary" style="color:var(--muted);font-size:12px;margin-bottom:10px;"></div>
+      <div id="a-candidates" style="max-height:55vh;overflow-y:auto;"></div>
+      <div class="modal-actions">
+        <button class="btn" id="assist-close">Zamknij</button>
+      </div>
+    </div>
+  </div>
+
   <footer>TimeRecord · dane lokalnie w SQLite · <span id="db-info"></span> · <span id="last-update">—</span></footer>
 
   <script>
     const $ = (id) => document.getElementById(id);
-    let currentDay = "today";
+    let selectedDate = todayISO();
 
     function fmt(s) {
       s = Math.round(s || 0);
@@ -247,6 +544,12 @@
     function yesterdayISO() {
       const d = new Date(); d.setDate(d.getDate() - 1);
       return localDateISO(d);
+    }
+    function dayLabel(dateISO) {
+      if (dateISO === todayISO()) return "dziś";
+      if (dateISO === yesterdayISO()) return "wczoraj";
+      const d = new Date(dateISO + "T00:00:00");
+      return d.toLocaleDateString("pl-PL", { weekday: "short", day: "2-digit", month: "2-digit" });
     }
 
     async function getJSON(url) {
@@ -288,9 +591,6 @@
         $("total").innerHTML = fmt(d.total_seconds) + '<span class="unit">aktywny</span>';
         $("idle-line").textContent = "nieaktywny (idle): " + fmt(d.idle_seconds);
         const max = Math.max(...d.apps.map(a => a.dur_seconds), 1);
-        // Used for accurate tooltip percentages
-        const appTotals = new Map();
-        for (const a of d.apps) appTotals.set(a.app, a.dur_seconds);
         const ul = $("apps");
         ul.innerHTML = "";
         if (d.apps.length === 0) {
@@ -301,11 +601,14 @@
           const pct = Math.round((a.dur_seconds / d.total_seconds) * 100);
           const li = document.createElement("li");
           li.innerHTML = `
-            <span class="app-name">${escapeHtml(a.app)}</span>
-            <span class="app-dur">${fmt(a.dur_seconds)}</span>
-            <span class="app-pct">${pct}%</span>
-            <div class="app-bar-wrap"><div class="app-bar" style="width:${(a.dur_seconds/max*100).toFixed(1)}%"></div></div>
-            <div class="tooltip" id="tt-${encodeURIComponent(a.app)}"></div>
+            <div class="app-main" title="Kliknij, aby grupować tytuły po podobieństwie">
+              <span class="app-name">${escapeHtml(a.app)}</span>
+              <span class="app-dur">${fmt(a.dur_seconds)}</span>
+              <span class="app-pct">${pct}%</span>
+              <div class="app-bar-wrap"><div class="app-bar" style="width:${(a.dur_seconds/max*100).toFixed(1)}%"></div></div>
+              <div class="tooltip" id="tt-${encodeURIComponent(a.app)}"></div>
+            </div>
+            <div class="app-drill" hidden></div>
           `;
           li.dataset.app = a.app;
           li.dataset.appTotal = String(a.dur_seconds);
@@ -320,15 +623,16 @@
     let hoverTimeout = null;
 
     function renderTooltip(container, app, items, totalForApp) {
-      const header = `${app} · top tytuły`;
-      const maxDur = Math.max(...items.map(x => x.dur_seconds), 1);
+      const header = `${app} · top obiekty / zadania`;
       container.innerHTML = `
         <div class="tt-title">${escapeHtml(header)}</div>
         ${items.map(it => {
           const p = totalForApp > 0 ? Math.round((it.dur_seconds / totalForApp) * 100) : 0;
+          const varBadge = it.n_variants > 1 ? `<span style="color: var(--muted); font-size: 11px; margin-left: 5px;">(${it.n_variants} war.)</span>` : "";
+          const cat = it.category && it.category !== "Inne" && it.category !== "Ogólne" ? `<span style="color: var(--accent); font-size: 11px; margin-right: 5px;">[${escapeHtml(it.category)}]</span>` : "";
           return `
             <div class="tt-row">
-              <div class="tt-key">${escapeHtml(it.key || '(bez klucza)')}</div>
+              <div class="tt-key">${cat}${escapeHtml(it.key || "(bez klucza)")}${varBadge}</div>
               <div class="tt-dur">${fmt(it.dur_seconds)} <span style="color: var(--muted);">(${p}%)</span></div>
             </div>
           `;
@@ -337,17 +641,132 @@
     }
 
     async function loadTopTitlesForApp(app) {
-      const date = currentDay === "today" ? todayISO() : yesterdayISO();
+      const date = selectedDate;
       const cacheKey = `${date}::${app}`;
-      if (ttCache.has(cacheKey)) return ttCache.get(cacheKey);
+      if (date !== todayISO() && ttCache.has(cacheKey)) return ttCache.get(cacheKey);
 
       const url = `/api/day/${date}/app/${encodeURIComponent(app)}/top-titles?limit=8`;
       const ctrl = new AbortController();
       if (ttAbort) ttAbort.abort();
       ttAbort = ctrl;
-      const d = await getJSON(url + `&v=${Date.now()}`); // bust caches at proxy level
-      ttCache.set(cacheKey, d.items || []);
-      return ttCache.get(cacheKey);
+      const d = await getJSON(url + `&v=${Date.now()}`);
+      const payload = d.items || [];
+      if (date !== todayISO()) ttCache.set(cacheKey, payload);
+      return payload;
+    }
+
+    // --- Drilldown: semantyczne obiekty i zadania (klik w wiersz aplikacji) ---
+    const entitiesCache = new Map();
+
+    async function loadEntitiesForApp(app) {
+      const date = selectedDate;
+      const cacheKey = `${date}::${app}`;
+      const isToday = date === todayISO();
+      if (!isToday && entitiesCache.has(cacheKey)) return entitiesCache.get(cacheKey);
+      const d = await getJSON(`/api/day/${date}/app/${encodeURIComponent(app)}/entities?limit=100&v=${Date.now()}`);
+      const list = d.entities || [];
+      if (!isToday) entitiesCache.set(cacheKey, list);
+      return list;
+    }
+
+    function renderDrill(panel, app, entities) {
+      const totalForApp = Number(panel.closest("li")?.dataset?.appTotal || 0);
+      panel.innerHTML = `
+        <div class="drill-head">
+          <span class="drill-title">Obiekty i zadania (${entities.length})</span>
+          <span class="drill-hint">kliknij wiersz z wariantami, aby rozwinąć poszczególne okna</span>
+        </div>
+        ${entities.map((e, idx) => {
+          const pct = totalForApp > 0 ? Math.round(e.dur_seconds / totalForApp * 100) : 0;
+          const hasVars = e.variants && e.variants.length > 1;
+          return `
+            <div class="drill-entity-row" data-idx="${idx}">
+              <div class="drill-entity-main" ${hasVars ? 'title="Kliknij, aby rozwinąć/zwinąć poszczególne okna"' : ''}>
+                <div class="drill-key">
+                  <span class="drill-badge">${escapeHtml(e.category)}</span>
+                  <span class="drill-name">${escapeHtml(e.entity)}</span>
+                  ${e.project ? `<span class="drill-proj">📁 ${escapeHtml(e.project)}</span>` : ""}
+                </div>
+                <div class="drill-dur">${fmt(e.dur_seconds)}</div>
+                <div class="drill-num">${pct}%</div>
+                <div style="display:flex;gap:6px;align-items:center;">
+                  <button class="btn mini btn-mkrule" data-idx="${idx}" title="Utwórz regułę dla tego obiektu">+ reguła</button>
+                  ${hasVars ? `<span class="badge-var">${e.n_variants} warianty ▾</span>` : `<span class="drill-num" style="font-size: 11px;">1 okno</span>`}
+                </div>
+              </div>
+              ${hasVars ? `
+                <div class="drill-variants-list" style="display: none;">
+                  ${e.variants.map(v => `
+                    <div class="drill-var-row">
+                      <div class="var-title">↳ ${escapeHtml(v.title)}</div>
+                      <div class="drill-dur" style="color: var(--text);">${fmt(v.dur_seconds)}</div>
+                      <div class="drill-num">${v.n_events} zdarz.</div>
+                    </div>
+                  `).join("")}
+                </div>
+              ` : ""}
+            </div>
+          `;
+        }).join("")}
+      `;
+
+      // Obsługa rozwijania wariantów
+      panel.querySelectorAll(".drill-entity-row").forEach(row => {
+        const vlist = row.querySelector(".drill-variants-list");
+        if (!vlist) return;
+        const main = row.querySelector(".drill-entity-main");
+        const btn = row.querySelector(".badge-var");
+        const numVars = row.querySelectorAll(".drill-var-row").length;
+        const defaultLabel = `${numVars} warianty ▾`;
+        main.addEventListener("click", (ev) => {
+          if (ev.target.closest(".btn-mkrule")) return;
+          ev.stopPropagation();
+          const open = vlist.style.display !== "none";
+          vlist.style.display = open ? "none" : "block";
+          if (btn) btn.textContent = open ? defaultLabel : "zwiń ▴";
+        });
+      });
+
+      // Przycisk "+ reguła" na encji -> asystent dla tej aplikacji
+      panel.querySelectorAll(".btn-mkrule").forEach(b => {
+        b.addEventListener("click", (ev) => {
+          ev.stopPropagation();
+          openAssistant(app);
+        });
+      });
+    }
+
+    async function loadProjects(dateISO) {
+      try {
+        const d = await getJSON(`/api/day/${dateISO}/projects`);
+        const card = $("projects-card");
+        const list = $("projects-list");
+        if (!d.projects || d.projects.length === 0) {
+          card.style.display = "none";
+          return;
+        }
+        card.style.display = "block";
+        list.innerHTML = "";
+        const max = Math.max(...d.projects.map(p => p.dur_seconds), 1);
+        for (const p of d.projects) {
+          const row = document.createElement("div");
+          row.className = "proj-row";
+          const appsText = p.apps.join(" · ");
+          row.innerHTML = `
+            <div>
+              <div class="proj-name">📁 ${escapeHtml(p.project)}</div>
+              <div class="proj-apps">${escapeHtml(appsText)}</div>
+            </div>
+            <div class="proj-bar-wrap">
+              <div class="proj-bar" style="width: ${(p.dur_seconds / max * 100).toFixed(1)}%"></div>
+            </div>
+            <div class="proj-dur">${fmt(p.dur_seconds)}</div>
+          `;
+          list.appendChild(row);
+        }
+      } catch (e) {
+        console.error("loadProjects failed", e);
+      }
     }
 
     async function loadWeek() {
@@ -359,8 +778,11 @@
         wrap.innerHTML = "";
         for (const day of d.days) {
           const isToday = day.day === today;
+          const isSelected = day.day === selectedDate;
           const row = document.createElement("div");
-          row.className = "week-row";
+          row.className = "week-row" + (isSelected ? " selected" : "");
+          row.dataset.date = day.day;
+          row.title = "Kliknij, aby zobaczyć ten dzień";
           const dateObj = new Date(day.day + "T00:00:00");
           const wd = dateObj.toLocaleDateString("pl-PL", { weekday: "short" });
           const md = dateObj.toLocaleDateString("pl-PL", { day: "2-digit", month: "2-digit" });
@@ -369,15 +791,72 @@
             <div class="week-bar-wrap"><div class="week-bar" style="width:${(day.total_seconds/max*100).toFixed(1)}%"></div></div>
             <span class="week-dur">${fmt(day.total_seconds)}</span>
           `;
+          row.addEventListener("click", () => selectDay(day.day));
           wrap.appendChild(row);
         }
       } catch (e) { console.error(e); }
     }
 
+    let calYear = new Date().getFullYear();
+    let calMonth = new Date().getMonth() + 1; // 1..12
+    const calCache = new Map(); // "y-m" -> days (tylko miesiące archiwalne)
+
+    async function loadCalendar() {
+      const key = calYear + "-" + calMonth;
+      const isCurrentMonth = calYear === new Date().getFullYear() && calMonth === new Date().getMonth() + 1;
+      let days;
+      if (!isCurrentMonth && calCache.has(key)) {
+        days = calCache.get(key);
+      } else {
+        const d = await getJSON(`/api/month/${calYear}/${calMonth}`);
+        days = d.days;
+        if (!isCurrentMonth) calCache.set(key, days);
+      }
+      $("cal-label").textContent = new Date(calYear, calMonth - 1, 1)
+        .toLocaleDateString("pl-PL", { month: "long", year: "numeric" });
+      const byDay = new Map(days.map(x => [x.day, x.total_seconds]));
+      const max = Math.max(...days.map(x => x.total_seconds), 1);
+      const offset = (new Date(calYear, calMonth - 1, 1).getDay() + 6) % 7; // Pon=0
+      const nDays = new Date(calYear, calMonth, 0).getDate();
+      const today = todayISO();
+      const grid = $("calendar");
+      grid.innerHTML = "";
+      for (const h of ["Pn", "Wt", "Śr", "Cz", "Pt", "So", "Nd"]) {
+        const el = document.createElement("div");
+        el.className = "cal-head";
+        el.textContent = h;
+        grid.appendChild(el);
+      }
+      for (let i = 0; i < offset; i++) {
+        const el = document.createElement("div");
+        el.className = "cal-cell other";
+        grid.appendChild(el);
+      }
+      for (let dd = 1; dd <= nDays; dd++) {
+        const dateISO = localDateISO(new Date(calYear, calMonth - 1, dd));
+        const total = byDay.get(dateISO) || 0;
+        const cell = document.createElement("div");
+        cell.className = "cal-cell";
+        cell.textContent = dd;
+        if (dateISO > today) cell.classList.add("future");
+        if (total > 0) {
+          cell.classList.add("has-data");
+          const ratio = Math.min(total / max, 1);
+          cell.style.background = `rgba(79, 154, 249, ${(0.12 + 0.72 * ratio).toFixed(2)})`;
+          cell.title = `${fmt(total)} aktywnego — kliknij, aby zobaczyć`;
+          cell.addEventListener("click", () => selectDay(dateISO));
+        } else {
+          cell.title = "brak danych";
+        }
+        if (dateISO === today) cell.classList.add("today");
+        if (dateISO === selectedDate) cell.classList.add("selected");
+        grid.appendChild(cell);
+      }
+    }
+
     async function loadEvents() {
       try {
-        const date = currentDay === "today" ? todayISO() : yesterdayISO();
-        const d = await getJSON("/api/events?date=" + date + "&limit=40");
+        const d = await getJSON("/api/events?date=" + selectedDate + "&limit=40");
         const tb = $("events");
         tb.innerHTML = "";
         if (d.events.length === 0) {
@@ -409,12 +888,27 @@
         .replace(/"/g, "&quot;");
     }
 
+    function syncTabs() {
+      document.querySelectorAll(".tab").forEach(t => {
+        const iso = t.dataset.day === "today" ? todayISO() : yesterdayISO();
+        t.classList.toggle("active", iso === selectedDate);
+      });
+    }
+
+    function selectDay(dateISO) {
+      selectedDate = dateISO;
+      refreshAll();
+    }
+
     async function refreshAll() {
       try {
-        await Promise.all([loadNow(), loadWeek()]);
-        const date = currentDay === "today" ? todayISO() : yesterdayISO();
-        const label = currentDay === "today" ? "dziś" : "wczoraj";
-        await loadDay(date, label);
+        await Promise.all([loadNow(), loadWeek(), loadCalendar(), loadProjects(selectedDate)]);
+        syncTabs();
+        const label = dayLabel(selectedDate);
+        $("day-label").textContent = label;
+        $("proj-day-label").textContent = label;
+        $("events-hint").textContent = label + " · najnowsze na górze";
+        await loadDay(selectedDate, label);
         await loadEvents();
         const t = new Date().toLocaleTimeString("pl-PL");
         $("last-update").textContent = "zaktualizowano " + t;
@@ -426,14 +920,24 @@
 
     document.querySelectorAll(".tab").forEach(t => {
       t.addEventListener("click", () => {
-        document.querySelectorAll(".tab").forEach(x => x.classList.remove("active"));
-        t.classList.add("active");
-        currentDay = t.dataset.day;
-        refreshAll();
+        selectDay(t.dataset.day === "today" ? todayISO() : yesterdayISO());
       });
     });
 
     $("btn-refresh").addEventListener("click", refreshAll);
+    $("btn-export").addEventListener("click", () => {
+      window.location.href = "/api/day/" + selectedDate + "/export.xlsx";
+    });
+    $("cal-prev").addEventListener("click", () => {
+      calMonth -= 1;
+      if (calMonth < 1) { calMonth = 12; calYear -= 1; }
+      loadCalendar().catch(console.error);
+    });
+    $("cal-next").addEventListener("click", () => {
+      calMonth += 1;
+      if (calMonth > 12) { calMonth = 1; calYear += 1; }
+      loadCalendar().catch(console.error);
+    });
     $("btn-pause").addEventListener("click", async () => {
       const d = await getJSON("/api/now");
       if (d.paused) { await fetch("/api/resume", { method: "POST" }); }
@@ -441,10 +945,421 @@
       loadNow();
     });
 
+    // ==================== Reguły klasyfikacji ====================
+    let editingRuleId = null;
+    let knownApps = [];
+    let knownCats = new Set(["Inne"]);
+
+    function ruleDesc(r) {
+      return `${r.pattern} → ${r.entity_tmpl}`;
+    }
+
+    async function loadRules() {
+      try {
+        const d = await getJSON("/api/rules");
+        const list = $("rules-list");
+        const rules = d.rules || [];
+        if (!rules.length) {
+          list.innerHTML = '<div class="empty">Brak własnych reguł — używane są wyłącznie reguły wbudowane i surowe tytuły.</div>';
+        } else {
+          list.innerHTML = rules.map(r => `
+            <div class="rule-row ${r.enabled ? "" : "disabled"}" data-id="${r.id}">
+              <div>
+                <div class="rule-head">
+                  <span class="rule-cat">[${escapeHtml(r.category)}]</span>
+                  <span class="rule-entity">${escapeHtml(r.entity_tmpl)}</span>
+                  ${r.app_match ? `<span class="rule-app">${escapeHtml(r.app_match)}</span>` : '<span class="rule-app">(wszystkie aplikacje)</span>'}
+                  ${r.is_decl ? '<span class="drill-proj">deklaracja projektu</span>' : ""}
+                </div>
+                <div class="rule-pat">${escapeHtml(r.match_type)}: ${escapeHtml(r.pattern || "(dowolny)")}${r.note ? ' · ' + escapeHtml(r.note) : ""}</div>
+              </div>
+              <div class="rule-actions">
+                <button class="btn" data-act="toggle">${r.enabled ? "wyłącz" : "włącz"}</button>
+                <button class="btn" data-act="edit">edytuj</button>
+                <button class="btn" data-act="del">usuń</button>
+              </div>
+            </div>
+          `).join("");
+          list.querySelectorAll(".rule-row").forEach(row => {
+            const id = Number(row.dataset.id);
+            const rule = rules.find(x => x.id === id);
+            row.querySelectorAll("button").forEach(b => {
+              b.addEventListener("click", async () => {
+                const act = b.dataset.act;
+                if (act === "toggle") {
+                  await fetch(`/api/rules/${id}`, { method: "PUT",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({ enabled: !rule.enabled }) });
+                } else if (act === "del") {
+                  if (!confirm(`Usunąć regułę „${rule.entity_tmpl}"?`)) return;
+                  await fetch(`/api/rules/${id}`, { method: "DELETE" });
+                } else if (act === "edit") {
+                  openRuleEditor(rule);
+                  return;
+                }
+                await loadRules(); refreshAll();
+              });
+            });
+          });
+        }
+        // builtin
+        const bl = $("builtin-list");
+        builtinRules = d.builtin || [];
+        bl.innerHTML = builtinRules.map(r => `
+          <div class="rule-row" style="opacity:.55;">
+            <div>
+              <div class="rule-head">
+                <span class="rule-cat">[${escapeHtml(r.category)}]</span>
+                <span class="rule-entity">${escapeHtml(r.entity_tmpl)}</span>
+                ${r.app_match ? `<span class="rule-app">${escapeHtml(r.app_match)}</span>` : ""}
+                ${r.is_decl ? '<span class="drill-proj">deklaracja</span>' : ""}
+                <span class="builtin-label">wbudowana</span>
+              </div>
+              <div class="rule-pat">${escapeHtml(r.match_type)}: ${escapeHtml(r.pattern || "(dowolny)")}</div>
+            </div>
+            <div class="rule-actions"><span class="builtin-label">priorytet ${r.priority}</span></div>
+          </div>
+        `).join("");
+        // zbierz kategorie i appki do podpowiedzi
+        [...rules, ...builtinRules].forEach(r => knownCats.add(r.category));
+        $("cats-datalist").innerHTML = [...knownCats].sort().map(c => `<option value="${escapeHtml(c)}">`).join("");
+      } catch (e) { console.error("loadRules", e); }
+    }
+
+    async function loadSuggestions() {
+      try {
+        const d = await getJSON("/api/suggestions?date=" + selectedDate + "&limit=15");
+        const wrap = $("sugg-wrap"), list = $("sugg-list");
+        const sugg = d.suggestions || [];
+        if (!sugg.length) { wrap.style.display = "none"; return; }
+        wrap.style.display = "block";
+        list.innerHTML = sugg.map((s, i) => `
+          <div class="sugg-row" data-i="${i}">
+            <div class="sugg-entity"><span class="sugg-app">${escapeHtml(s.app)}</span> · ${escapeHtml(s.entity)}</div>
+            <div class="sugg-dur">${fmt(s.dur_seconds)}</div>
+            <div class="sugg-dur">${s.n_variants} ok.</div>
+            <div><button class="btn" data-i="${i}">+ reguła</button></div>
+          </div>
+        `).join("");
+        list.querySelectorAll("button").forEach(b => {
+          b.addEventListener("click", () => {
+            const s = sugg[Number(b.dataset.i)];
+            openAssistant(s.app);
+          });
+        });
+        window._sugg = sugg;
+      } catch (e) { console.error("loadSuggestions", e); }
+    }
+
+    // --- edytor reguł ---
+    function openRuleEditor(rule, prefill) {
+      editingRuleId = rule ? rule.id : null;
+      $("rule-modal-title").textContent = rule ? "Edytuj regułę" : "Nowa reguła";
+      $("r-app").value = rule ? rule.app_match : (prefill?.app || "");
+      $("r-match-type").value = rule ? rule.match_type : (prefill?.matchType || "regex");
+      $("r-pattern").value = rule ? rule.pattern : (prefill?.pattern || "");
+      $("r-entity").value = rule ? rule.entity_tmpl : (prefill?.entity || "{0}");
+      $("r-category").value = rule ? rule.category : (prefill?.category || "Inne");
+      $("r-project-mode").value = rule ? rule.project_mode : "inherit";
+      $("r-project").value = rule?.project || "";
+      $("r-pgroup").value = rule?.project_group ?? "";
+      $("r-is-decl").checked = !!(rule && rule.is_decl);
+      $("r-note").value = rule?.note || "";
+      $("pv-app").value = prefill?.sampleApp || rule?.app_match || "";
+      $("pv-title").value = prefill?.sampleTitle || "";
+      syncProjectFields();
+      $("rule-modal").classList.add("open");
+      $("apps-datalist").innerHTML = knownApps.map(a =>
+        `<option value="${escapeHtml(a.replace(/\.exe$/i, ""))}">`).join("");
+      updatePreview();
+    }
+
+    function syncProjectFields() {
+      const m = $("r-project-mode").value;
+      $("r-project-label").style.display = m === "fixed" ? "" : "none";
+      $("r-project").style.display = m === "fixed" ? "" : "none";
+      $("r-pgroup-label").style.display = m === "group" || $("r-is-decl").checked ? "" : "none";
+      $("r-pgroup").style.display = m === "group" || $("r-is-decl").checked ? "" : "none";
+    }
+
+    function collectRuleForm() {
+      return {
+        app_match: $("r-app").value.trim(),
+        match_type: $("r-match-type").value,
+        pattern: $("r-pattern").value,
+        entity_tmpl: $("r-entity").value.trim() || "{0}",
+        category: $("r-category").value.trim() || "Inne",
+        project_mode: $("r-project-mode").value,
+        project: $("r-project").value.trim() || null,
+        project_group: $("r-pgroup").value ? Number($("r-pgroup").value) : null,
+        is_decl: $("r-is-decl").checked,
+        note: $("r-note").value.trim() || null,
+      };
+    }
+
+    let pvTimer = null;
+    async function updatePreview() {
+      const title = $("pv-title").value;
+      const app = $("pv-app").value || $("r-app").value;
+      if (!title) {
+        $("pv-result").innerHTML = '<span style="color:var(--muted);">wpisz tytuł, by zobaczyć wynik</span>';
+        return;
+      }
+      try {
+        const d = await (await fetch("/api/rules/test", {
+          method: "POST", headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({ rule: collectRuleForm(), app, title }),
+        })).json();
+        if (!d.app_match) {
+          $("pv-result").innerHTML = `<span class="miss">✗ app "${escapeHtml(app)}" nie pasuje do "${escapeHtml($("r-app").value)}"</span>`;
+        } else if (d.declares_project) {
+          $("pv-result").innerHTML = `<span class="ok">✓ deklaruje projekt:</span> <code>${escapeHtml(d.declares_project)}</code>`;
+        } else if (d.matched) {
+          $("pv-result").innerHTML =
+            `<span class="ok">✓ encja:</span> <code>${escapeHtml(d.entity)}</code> ` +
+            `<span style="color:var(--muted);">· kategoria</span> <code>${escapeHtml(d.category)}</code>` +
+            (d.project ? ` <span style="color:var(--muted);">· projekt</span> <code>${escapeHtml(d.project)}</code>` : "");
+        } else {
+          $("pv-result").innerHTML = `<span class="miss">✗ wzorzec nie pasuje do tytułu</span>`;
+        }
+      } catch (e) {
+        $("pv-result").innerHTML = `<span class="miss">błąd: ${escapeHtml(e.message)}</span>`;
+      }
+    }
+    function schedulePreview() {
+      clearTimeout(pvTimer);
+      pvTimer = setTimeout(updatePreview, 300);
+    }
+
+    $("r-project-mode").addEventListener("change", () => { syncProjectFields(); schedulePreview(); });
+    $("r-is-decl").addEventListener("change", () => { syncProjectFields(); schedulePreview(); });
+    ["r-app","r-pattern","r-entity","r-category","r-project","r-pgroup","pv-app","pv-title","r-match-type"]
+      .forEach(id => {
+        $(id).addEventListener("input", schedulePreview);
+        $(id).addEventListener("change", schedulePreview);
+      });
+    $("btn-new-rule").addEventListener("click", () => openRuleEditor(null));
+    $("rule-cancel").addEventListener("click", () => $("rule-modal").classList.remove("open"));
+    $("rule-modal").addEventListener("click", (e) => {
+      if (e.target === $("rule-modal")) $("rule-modal").classList.remove("open");
+    });
+    $("rule-save").addEventListener("click", async () => {
+      const body = collectRuleForm();
+      if (!body.pattern && body.match_type !== "contains") {
+        alert("Wzorzec jest wymagany dla regex."); return;
+      }
+      const url = editingRuleId ? `/api/rules/${editingRuleId}` : "/api/rules";
+      const method = editingRuleId ? "PUT" : "POST";
+      const r = await fetch(url, { method, headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(body) });
+      if (!r.ok) { alert("Błąd zapisu: " + r.status); return; }
+      $("rule-modal").classList.remove("open");
+      await loadRules(); refreshAll();
+    });
+    $("show-builtin").addEventListener("click", (e) => {
+      e.preventDefault();
+      const bl = $("builtin-list");
+      const open = bl.style.display !== "none";
+      bl.style.display = open ? "none" : "block";
+      e.target.textContent = open ? "pokaż reguły wbudowane…" : "ukryj reguły wbudowane";
+    });
+
+    // --- pokrycie reguły na danych dnia ---
+    $("rule-test-day").addEventListener("click", async () => {
+      const body = { rule: collectRuleForm(), date: selectedDate };
+      $("cov-summary").textContent = "sprawdzam…";
+      $("cov-list").innerHTML = "";
+      try {
+        const r = await fetch("/api/rules/test-coverage", {
+          method: "POST", headers: {"Content-Type": "application/json"},
+          body: JSON.stringify(body),
+        });
+        const d = await r.json();
+        $("cov-summary").innerHTML =
+          `<span class="ok">✓ ${d.matched_count} dopasowano</span> · ` +
+          `<span class="miss">✗ ${d.missed_count} bez zmian</span>`;
+        const rows = [];
+        for (const m of d.matched) {
+          rows.push(`<div class="drill-var-row"><span class="var-title" style="color:var(--accent-2);">→ ${escapeHtml(m.entity || "(deklaracja projektu)")}${m.project ? ` <span class="drill-proj">${escapeHtml(m.project)}</span>` : ""}</span><span class="drill-num" style="text-align:left;">${escapeHtml(m.title.slice(0,70))}</span></div>`);
+        }
+        for (const m of d.missed) {
+          rows.push(`<div class="drill-var-row"><span class="var-title" style="opacity:.5;">✗ ${escapeHtml(m.title.slice(0,80))}</span></div>`);
+        }
+        $("cov-list").innerHTML = rows.join("") || '<div style="color:var(--muted);">brak tytułów z tej aplikacji dziś</div>';
+      } catch (e) {
+        $("cov-summary").textContent = "błąd: " + e.message;
+      }
+    });
+
+    // --- zarządzanie zbiorcze: eksport / import / wyczyść ---
+    $("btn-rules-export").addEventListener("click", () => {
+      window.location.href = "/api/rules/export";
+    });
+    $("btn-rules-clear").addEventListener("click", async () => {
+      const n = document.querySelectorAll("#rules-list .rule-row").length;
+      if (!n) { alert("Brak reguł do wyczyszczenia."); return; }
+      if (!confirm(`Wyzerować ${n} reguł użytkownika?\nZostaną zarchiwizowane do rules_archive_*.json w %LOCALAPPDATA%\\TimeRecord.`)) return;
+      const r = await fetch("/api/rules/clear", { method: "POST" });
+      const d = await r.json();
+      alert(`Usunięto ${d.removed} reguł.\nArchiwum: ${d.archived_to || "(brak)"}`);
+      await loadRules(); refreshAll();
+    });
+    $("btn-rules-import").addEventListener("click", () => $("rules-import-file").click());
+    $("rules-import-file").addEventListener("change", async (e) => {
+      const f = e.target.files[0];
+      if (!f) return;
+      try {
+        const data = JSON.parse(await f.text());
+        const rules = data.rules || data;
+        const mode = confirm("Nadpisać istniejące reguły?\nOK = wyczyść i zaimportuj (replace)\nAnuluj = dodaj do istniejących (merge)")
+          ? "replace" : "merge";
+        const r = await fetch("/api/rules/import", {
+          method: "POST", headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({ rules, mode }),
+        });
+        const d = await r.json();
+        alert(`Zaimportowano ${d.imported} reguł (tryb: ${mode}).`);
+        await loadRules(); refreshAll();
+      } catch (err) {
+        alert("Błąd importu: " + err.message);
+      }
+      e.target.value = "";
+    });
+
+    // --- asystent reguł: propozycje na podstawie tytułów aplikacji ---
+    function openAssistant(appName) {
+      $("a-app").value = (appName || "").replace(/\.exe$/i, "");
+      $("a-candidates").innerHTML = "";
+      $("a-summary").textContent = "";
+      $("assist-modal").classList.add("open");
+      $("apps-datalist").innerHTML = knownApps.map(a =>
+        `<option value="${escapeHtml(a.replace(/\.exe$/i, ""))}">`).join("");
+      if (appName) runAssistant();
+    }
+
+    function candEntity(c, name) {
+      return c.kind === "extract"
+        ? (name ? name + " {1}" : "{1}")
+        : (name || c.entity_tmpl);
+    }
+
+    function renderCandidates(cands) {
+        const box = $("a-candidates");
+        if (!cands.length) {
+          box.innerHTML = '<div style="color:var(--muted);">Brak powtarzalnych wzorców w tytułach tej aplikacji.</div>';
+          return;
+        }
+        box.innerHTML = cands.map((c, i) => {
+          const vals = (c.sample_values || []).map(v =>
+            `<span class="chip" style="font-size:11px;">${escapeHtml(v)}</span>`).join(" ");
+          const desc = c.kind === "extract"
+            ? `<b>${c.support}</b> tytułów zawiera «${escapeHtml(c.anchor)}» — zgrupuj po zmiennej części`
+            : `<b>${c.support}</b> tytułów zawiera «${escapeHtml(c.anchor)}» — pokaż jako jedną pozycję`;
+          return `<div class="rule-row" data-i="${i}" style="flex-direction:column;align-items:stretch;gap:8px;">
+            <div style="font-size:13px;">${desc}</div>
+            ${vals ? `<div style="display:flex;flex-wrap:wrap;gap:4px;">${vals}</div>` : ""}
+            <div class="cand-preview" style="font-size:12px;color:var(--accent-2);"></div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+              <input type="text" class="c-name" placeholder="nazwa grupy" value="${escapeHtml(c.name_hint)}" style="width:150px;">
+              ${c.kind === "extract" ? '<span style="color:var(--muted);font-size:12px;">+ wartość</span>' : ""}
+              <input type="text" class="c-cat" list="cats-datalist" placeholder="kategoria (np. Praca)" style="width:150px;">
+              <button class="btn primary c-use">Użyj</button>
+              <button class="btn c-adv" title="otwórz pełny edytor z tym wzorcem">zaawansowane</button>
+            </div>
+          </div>`;
+        }).join("");
+
+        box.querySelectorAll(".rule-row").forEach(row => {
+          const c = cands[Number(row.dataset.i)];
+          const nameInp = row.querySelector(".c-name");
+          const prev = row.querySelector(".cand-preview");
+          const upd = () => {
+            const name = nameInp.value.trim();
+            if (c.kind === "extract" && c.sample_values?.length) {
+              prev.textContent = "→ " + c.sample_values.slice(0, 4)
+                .map(v => `${name || "…"} ${v}`).join(" · ");
+            } else {
+              prev.textContent = "→ " + (name || c.entity_tmpl);
+            }
+          };
+          nameInp.addEventListener("input", upd);
+          upd();
+          row.querySelector(".c-use").addEventListener("click", async (ev) => {
+            const body = {
+              app_match: $("a-app").value.trim(),
+              match_type: c.match_type,
+              pattern: c.pattern,
+              entity_tmpl: candEntity(c, nameInp.value.trim()),
+              category: row.querySelector(".c-cat").value.trim() || "Inne",
+              project_mode: "inherit",
+            };
+            const r = await fetch("/api/rules", {
+              method: "POST", headers: {"Content-Type": "application/json"},
+              body: JSON.stringify(body) });
+            if (r.ok) {
+              ev.target.textContent = "✓ dodano";
+              ev.target.disabled = true;
+              await loadRules(); refreshAll();
+            } else {
+              alert("Błąd zapisu reguły");
+            }
+          });
+          row.querySelector(".c-adv").addEventListener("click", () => {
+            $("assist-modal").classList.remove("open");
+            openRuleEditor(null, {
+              app: $("a-app").value.trim(),
+              sampleTitle: c.sample_titles?.[0] || "",
+              sampleApp: $("a-app").value.trim(),
+              pattern: c.pattern, matchType: c.match_type,
+              entity: candEntity(c, nameInp.value.trim()),
+              category: row.querySelector(".c-cat").value.trim(),
+            });
+          });
+        });
+    }
+
+    async function runAssistant() {
+      const app = $("a-app").value.trim();
+      if (!app) { $("a-summary").textContent = "Podaj nazwę aplikacji."; return; }
+      $("a-summary").textContent = "analizuję tytuły…";
+      $("a-candidates").innerHTML = "";
+      try {
+        const r = await fetch("/api/rules/suggest", {
+          method: "POST", headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({ app, days: Number($("a-days").value), date: selectedDate }),
+        });
+        const d = await r.json();
+        $("a-summary").textContent =
+          `Przeanalizowano ${d.titles_count} unikalnych tytułów z ${d.days} dni — ${d.candidates.length} propozycji.`;
+        renderCandidates(d.candidates || []);
+      } catch (e) {
+        $("a-summary").textContent = "błąd: " + e.message;
+      }
+    }
+
+    $("btn-rules-assist").addEventListener("click", () => openAssistant(null));
+    $("a-analyze").addEventListener("click", runAssistant);
+    $("assist-close").addEventListener("click", () => $("assist-modal").classList.remove("open"));
+    $("assist-modal").addEventListener("click", (e) => {
+      if (e.target === $("assist-modal")) $("assist-modal").classList.remove("open");
+    });
+
+    // zbierz listę aplikacji dnia do datalist (przy ładowaniu dnia)
+    const _origLoadDay = loadDay;
+    loadDay = async function(dateISO, label) {
+      await _origLoadDay(dateISO, label);
+      try {
+        const d = await getJSON("/api/day/" + dateISO);
+        knownApps = d.apps.map(a => a.app);
+      } catch(e) {}
+    };
+
     refreshAll();
+    loadRules();
+    loadSuggestions();
     setInterval(loadNow, 5000);
-    // Odświeżaj podsumowanie co 10 s (gdy widok na "dziś") — baza rośnie na żywo.
-    setInterval(() => { if (currentDay === "today") refreshAll(); }, 10000);
+    // Odświeżaj podsumowanie co 10 s (tylko gdy oglądamy "dziś") — baza rośnie na żywo.
+    setInterval(() => { if (selectedDate === todayISO()) refreshAll(); }, 10000);
 
     function hideActiveTooltip() {
       if (activeTooltip) {
@@ -453,9 +1368,15 @@
       }
     }
 
-    // Hover tooltip dla pasków aplikacji
+    // Hover tooltip dla pasków aplikacji (tylko nad głównym wierszem, nie nad panelem drilldown)
     document.addEventListener('mouseover', (ev) => {
-      const li = ev.target.closest && ev.target.closest('#apps li');
+      if (ev.target.closest && ev.target.closest('.app-drill')) {
+        hideActiveTooltip();
+        return;
+      }
+      const main = ev.target.closest && ev.target.closest('.app-main');
+      if (!main) return;
+      const li = main.closest('#apps li');
       if (!li) return;
       const app = li.dataset.app;
       if (!app) return;
@@ -492,6 +1413,33 @@
       const fromLi = ev.target && ev.target.closest && ev.target.closest('#apps li');
       const toInsideApps = related.closest && related.closest('#apps');
       if (!fromLi || !toInsideApps) hideActiveTooltip();
+    });
+
+    // Klik w wiersz aplikacji -> panel obiektów i zadań (drilldown)
+    document.getElementById("apps").addEventListener("click", async (ev) => {
+      const main = ev.target.closest && ev.target.closest(".app-main");
+      if (!main) return;
+      const li = main.closest("li");
+      if (!li) return;
+      const app = li.dataset.app;
+      if (!app) return;
+      const panel = li.querySelector(".app-drill");
+      if (!panel) return;
+      hideActiveTooltip();
+      if (!panel.hidden) { panel.hidden = true; return; }
+      panel.hidden = false;
+      panel.innerHTML = `<div class="drill-head"><span class="drill-title">Ładowanie obiektów dla ${escapeHtml(app)}…</span></div>`;
+      try {
+        const entities = await loadEntitiesForApp(app);
+        if (!entities.length) {
+          panel.innerHTML = `<div class="drill-head"><span class="drill-title">Brak danych dla ${escapeHtml(app)}.</span></div>`;
+          return;
+        }
+        renderDrill(panel, app, entities);
+      } catch (e) {
+        panel.innerHTML = `<div class="drill-head"><span class="drill-title">Błąd ładowania danych</span></div>`;
+        console.error(e);
+      }
     });
   </script>
 </body>
