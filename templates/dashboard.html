@@ -313,6 +313,19 @@
     .pv-result .miss { color: var(--warn); }
     .pv-result code { background: var(--card); padding: 1px 6px; border-radius: 4px; }
     .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+
+    /* --- Ustawienia: pełnoekranowy widok --- */
+    .settings-overlay {
+      position: fixed; inset: 0; background: var(--bg); z-index: 40;
+      display: none; overflow-y: auto;
+    }
+    .settings-overlay.open { display: block; }
+    .settings-wrap { max-width: 960px; margin: 0 auto; padding: 20px 24px 60px; }
+    .settings-head {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 18px;
+    }
+    .settings-head h2 { margin: 0; font-size: 17px; font-weight: 600; }
   </style>
 </head>
 <body>
@@ -325,6 +338,7 @@
       <span class="status-pill" id="status"><span class="dot live"></span>live</span>
       <button class="btn" id="btn-pause">Pauza</button>
       <button class="btn" id="btn-refresh">Odśwież</button>
+      <button class="btn" id="btn-settings" title="Ustawienia i reguły klasyfikacji">⚙ Ustawienia</button>
     </div>
   </header>
 
@@ -367,29 +381,6 @@
       <div id="projects-list" style="margin-top: 10px;"></div>
     </div>
 
-    <div class="card" id="rules-card" style="margin-bottom: 24px;">
-      <h2 style="display: flex; align-items: center; justify-content: space-between;">
-        <span>Reguły klasyfikacji</span>
-        <span style="display:flex; gap:6px;">
-          <button class="btn mini" id="btn-rules-export" title="Pobierz wszystkie reguły jako JSON">⬇ eksport</button>
-          <button class="btn mini" id="btn-rules-import" title="Wczytaj reguły z pliku JSON">⬆ import</button>
-          <button class="btn mini" id="btn-rules-clear" title="Wyzeruj reguły (archiwizacja do %LOCALAPPDATA%\TimeRecord)">🗑 wyczyść</button>
-          <button class="btn mini" id="btn-rules-assist" title="Automatyczne propozycje reguł na podstawie tytułów okien">✨ asystent</button>
-          <button class="btn mini" id="btn-new-rule">+ Nowa reguła</button>
-        </span>
-      </h2>
-      <input type="file" id="rules-import-file" accept=".json" style="display:none;">
-      <div id="rules-list" style="margin-top: 10px;"></div>
-      <div id="builtin-toggle" style="margin-top: 10px;">
-        <a href="#" id="show-builtin" style="font-size: 12px;">pokaż reguły wbudowane…</a>
-        <div id="builtin-list" style="display: none; margin-top: 8px;"></div>
-      </div>
-      <div id="sugg-wrap" style="margin-top: 14px; display: none;">
-        <h2 style="margin-bottom: 6px;">Nieklasyfikowane — kandydaci na reguły</h2>
-        <div id="sugg-list"></div>
-      </div>
-    </div>
-
     <div class="section-title">
       <h3>Aplikacje — <span id="day-label">dziś</span></h3>
       <div class="tabs">
@@ -415,6 +406,39 @@
       </table>
     </div>
   </main>
+
+  <!-- Ustawienia: osobny pełnoekranowy widok z zarządzaniem regułami -->
+  <div class="settings-overlay" id="settings-overlay">
+    <div class="settings-wrap">
+      <div class="settings-head">
+        <h2>⚙ Ustawienia — reguły klasyfikacji</h2>
+        <button class="btn" id="settings-close">✕ Zamknij</button>
+      </div>
+
+      <div class="card" id="rules-card">
+        <h2 style="display: flex; align-items: center; justify-content: space-between;">
+          <span>Reguły klasyfikacji</span>
+          <span style="display:flex; gap:6px;">
+            <button class="btn mini" id="btn-rules-export" title="Pobierz wszystkie reguły jako JSON">⬇ eksport</button>
+            <button class="btn mini" id="btn-rules-import" title="Wczytaj reguły z pliku JSON">⬆ import</button>
+            <button class="btn mini" id="btn-rules-clear" title="Wyzeruj reguły (archiwizacja do %LOCALAPPDATA%\TimeRecord)">🗑 wyczyść</button>
+            <button class="btn mini" id="btn-rules-assist" title="Automatyczne propozycje reguł na podstawie tytułów okien">✨ asystent</button>
+            <button class="btn mini" id="btn-new-rule">+ Nowa reguła</button>
+          </span>
+        </h2>
+        <input type="file" id="rules-import-file" accept=".json" style="display:none;">
+        <div id="rules-list" style="margin-top: 10px;"></div>
+        <div id="builtin-toggle" style="margin-top: 10px;">
+          <a href="#" id="show-builtin" style="font-size: 12px;">pokaż reguły wbudowane…</a>
+          <div id="builtin-list" style="display: none; margin-top: 8px;"></div>
+        </div>
+        <div id="sugg-wrap" style="margin-top: 14px; display: none;">
+          <h2 style="margin-bottom: 6px;">Nieklasyfikowane — kandydaci na reguły</h2>
+          <div id="sugg-list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <div class="modal-overlay" id="rule-modal">
     <div class="modal">
@@ -1383,6 +1407,20 @@
         $("a-summary").textContent = "błąd: " + e.message;
       }
     }
+
+    // --- Ustawienia: pełnoekranowy widok reguł ---
+    $("btn-settings").addEventListener("click", () => {
+      $("settings-overlay").classList.add("open");
+    });
+    function closeSettings() { $("settings-overlay").classList.remove("open"); }
+    $("settings-close").addEventListener("click", closeSettings);
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        // Esc: najpierw modale, potem ustawienia
+        if (document.querySelector(".modal-overlay.open")) return;
+        closeSettings();
+      }
+    });
 
     $("btn-rules-assist").addEventListener("click", () => openAssistant(null));
     $("a-analyze").addEventListener("click", runAssistant);
