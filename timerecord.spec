@@ -30,6 +30,7 @@ hiddenimports = [
     'anyio._backends._asyncio',
     'email.mime.multipart',
     'email.mime.text',
+    'openpyxl',
 ]
 
 # pywin32 — upewnij się że DLL-e są dołączone
