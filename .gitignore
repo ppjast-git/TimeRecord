@@ -38,6 +38,11 @@ startup_debug.*
 # Notatki deweloperskie (lokalna ściaga, nie w repo)
 DEV_NOTES.md
 
+# Reguły użytkownika — seed i archiwa (prywatne, trzymane w %LOCALAPPDATA%)
+rules_seed.json
+rules_archive_*.json
+rules.json
+
 # OS
 Thumbs.db
 desktop.ini
